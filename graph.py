@@ -1,0 +1,119 @@
+"""LangGraph orchestration for Travel Planning Agent"""
+from langgraph.graph import StateGraph, START, END
+from agents.state import TravelState
+from agents.intent_extractor import extract_intent
+from agents.search_agents import (
+    destination_research_agent,
+    flight_search_agent,
+    hotel_search_agent,
+    activity_research_agent
+)
+from agents.itinerary_compiler import compile_itinerary, format_final_itinerary
+from agents.feedback_handler import (
+    user_feedback_agent,
+    refine_itinerary_agent,
+    save_itinerary_agent
+)
+
+def create_travel_agent_graph():
+    """Create the travel planning agent graph with conversational feedback loop"""
+    
+    graph = StateGraph(TravelState)
+    
+    # Add all agent nodes
+    graph.add_node("extract_intent", extract_intent)
+    graph.add_node("research_destination", destination_research_agent)
+    graph.add_node("search_flights", flight_search_agent)
+    graph.add_node("search_hotels", hotel_search_agent)
+    graph.add_node("search_activities", activity_research_agent)
+    graph.add_node("compile_itinerary", compile_itinerary)
+    graph.add_node("format_output", format_final_itinerary)
+    graph.add_node("get_feedback", user_feedback_agent)
+    graph.add_node("refine_itinerary", refine_itinerary_agent)
+    graph.add_node("save_and_exit", save_itinerary_agent)
+    
+    # Define routing function
+    def route_after_feedback(state: TravelState) -> str:
+        """Route based on user feedback"""
+        next_step = state.get("next_step", "get_feedback")
+        
+        if next_step == "save_and_exit":
+            return "save_and_exit"
+        elif next_step == "refine_itinerary":
+            return "refine_itinerary"
+        elif next_step == "get_feedback":
+            return "get_feedback"
+        elif next_step == "end":
+            return "end"
+        else:
+            return "get_feedback"
+    
+    def route_after_refinement(state: TravelState) -> str:
+        """Route after refinement decision"""
+        next_step = state.get("next_step", "compile_itinerary")
+        
+        if next_step == "search_flights":
+            return "search_flights"
+        else:
+            return "compile_itinerary"
+    
+    # Build the graph
+    # Initial flow: intent -> research -> search -> compile -> format -> feedback
+    graph.add_edge(START, "extract_intent")
+    graph.add_edge("extract_intent", "research_destination")
+    graph.add_edge("research_destination", "search_flights")
+    graph.add_edge("search_flights", "search_hotels")
+    graph.add_edge("search_hotels", "search_activities")
+    graph.add_edge("search_activities", "compile_itinerary")
+    graph.add_edge("compile_itinerary", "format_output")
+    
+    # After formatting, always go to feedback
+    graph.add_edge("format_output", "get_feedback")
+    
+    # Feedback loop: user can refine, save, or continue asking
+    graph.add_conditional_edges(
+        "get_feedback",
+        route_after_feedback,
+        {
+            "get_feedback": "get_feedback",      # Loop back for more feedback
+            "refine_itinerary": "refine_itinerary",  # Go to refinement
+            "save_and_exit": "save_and_exit",    # Save and exit
+            "end": END                            # End directly
+        }
+    )
+    
+    # After refinement, decide whether to re-search or just recompile
+    graph.add_conditional_edges(
+        "refine_itinerary",
+        route_after_refinement,
+        {
+            "search_flights": "search_flights",      # Re-do searches
+            "compile_itinerary": "compile_itinerary"  # Just recompile
+        }
+    )
+    
+    # After saving, end
+    graph.add_edge("save_and_exit", END)
+    
+    return graph.compile()
+
+def visualize_graph(app, output_file="travel_agent_graph.png"):
+    """Generate and save the graph visualization"""
+    import subprocess
+    
+    try:
+        # Get the graph image
+        image_data = app.get_graph().draw_mermaid_png()
+        
+        # Save to file
+        with open(output_file, 'wb') as f:
+            f.write(image_data)
+        
+        print(f"\n📊 Graph visualization saved to: {output_file}")
+        
+        # Try to open it
+        subprocess.run(['open', output_file], check=False)
+        
+    except Exception as e:
+        print(f"⚠️  Could not generate graph visualization: {e}")
+
