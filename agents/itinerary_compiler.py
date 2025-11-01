@@ -171,7 +171,7 @@ def format_final_itinerary(state: TravelState) -> TravelState:
     1. A compelling creative title
     2. Trip Overview section with key details
     3. Flight Details section (outbound and return)
-    4. Accommodation section with hotel details
+    4. Accommodation section with hotel details [Do not include images]
     5. Day-by-Day Itinerary with all activities for each day
     6. Budget Breakdown section with a table
     7. Destination Tips section (if available)
@@ -182,11 +182,21 @@ def format_final_itinerary(state: TravelState) -> TravelState:
     Include all the information provided - don't omit any details.
     Make it engaging and travel-friendly.
     
-    IMPORTANT - Image formatting:
-    - If you include images (from image_url fields), always use HTML img tags with explicit width attribute
-    - Format images as: <img src="URL" alt="description" width="80mm">
-    - DO NOT use CSS style attributes like style="max-width: 80mm" - use the width attribute directly
-    - This ensures images are properly sized for PDF generation and don't overflow the page"""
+    CRITICAL - IMAGE PLACEHOLDERS FOR ACTIVITIES:
+    - For EACH activity in the Day-by-Day Itinerary, insert an image placeholder immediately below the activity description
+    - Use the exact format: [IMAGE_PLACEHOLDER:activity_name]
+    - Replace 'activity_name' with the actual name of the activity (e.g., "Eiffel Tower Visit", "Sushi Making Class")
+    - Place the placeholder on a new line right after the activity description
+    - Only include placeholders for actual activities (not for travel days like "Airport Transfer")
+    - The placeholder will be automatically replaced with a generated image in the PDF output
+    
+    Example format:
+    ### Day 2: Exploration Day
+    - **Morning: Eiffel Tower Visit**
+      Duration: 2 hours
+      Price: $25
+      Experience the iconic symbol of Paris from the observation deck.
+    [IMAGE_PLACEHOLDER:Eiffel Tower Visit]"""
     
     # Build comprehensive user message with all itinerary data
     itinerary_data = {
@@ -235,13 +245,14 @@ def format_final_itinerary(state: TravelState) -> TravelState:
     - No emojies
     - Horizontal rules (---)
     
-    IMAGE FORMATTING RULES:
-    - If hotel or activity data includes image_url fields, include the images in the appropriate sections
-    - ALWAYS format images using HTML img tags with explicit width attribute: <img src="URL" alt="description" width="80mm">
-    - DO NOT use CSS style attributes (style="max-width: 80mm") - the PDF library doesn't support them
-    - Never use raw markdown image syntax ![alt](url) for images that need size control
-    - Example: <img src="https://example.com/hotel.jpg" alt="Hotel view" width="80mm">
-    - The width attribute directly controls image size in the PDF output
+    CRITICAL - IMAGE PLACEHOLDERS FOR ACTIVITIES:
+    - For EACH activity in the Day-by-Day Itinerary section, you MUST insert an image placeholder immediately below the activity description
+    - Use the exact format: [IMAGE_PLACEHOLDER:activity_name]
+    - Replace 'activity_name' with the actual name/title of the activity from the data
+    - Place the placeholder on its own line, right after the activity description and before the next activity
+    - Include placeholders ONLY for actual tourist activities (not for travel/transfer activities like "Airport Transfer" or "Hotel Check-out")
+    - Example: After describing "Eiffel Tower Visit" activity, add: [IMAGE_PLACEHOLDER:Eiffel Tower Visit]
+    - Make sure every real activity has its placeholder - this is essential for PDF generation
 
     Return ONLY the markdown content, no additional text or explanation."""
     

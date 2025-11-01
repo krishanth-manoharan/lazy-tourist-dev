@@ -1,10 +1,12 @@
 """PDF generation utilities for converting markdown content to PDF"""
 import markdown2
 import re
+import os
 from fpdf import FPDF
 from urllib.request import urlopen
 from io import BytesIO
 from PIL import Image
+from openai import OpenAI
 
 
 class PDF(FPDF):
@@ -175,8 +177,50 @@ def convert_width_to_mm(width_value: float, unit: str) -> float:
         return width_value  # Default to assuming mm
 
 
+def generate_activity_image(activity_name: str) -> Image.Image:
+    """Generate an image for an activity using OpenAI DALL-E.
+    
+    Args:
+        activity_name: Name of the activity to generate image for
+        
+    Returns:
+        PIL Image object or None if generation fails
+    """
+    try:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            print(f"⚠️  Warning: OPENAI_API_KEY not found, skipping image generation for {activity_name}")
+            return None
+        
+        client = OpenAI(api_key=api_key)
+        
+        # Create a descriptive prompt for the activity
+        prompt = f"Beautiful, professional travel photography style image of {activity_name}. High quality, vibrant colors, travel brochure aesthetic."
+        
+        print(f"🖼️  Generating image for: {activity_name}...")
+        
+        # Generate image using DALL-E 3
+        response = client.images.generate(
+            model="dall-e-3",
+            prompt=prompt,
+            size="1024x1024",
+            quality="standard",
+            n=1,
+        )
+        
+        image_url = response.data[0].url
+        
+        # Download the generated image
+        img = download_image(image_url)
+        return img
+        
+    except Exception as e:
+        print(f"⚠️  Warning: Could not generate image for {activity_name}: {e}")
+        return None
+
+
 class CustomPDF(PDF):
-    """Custom PDF class that handles image insertion."""
+    """Custom PDF class that handles image insertion and placeholder detection."""
     
     def add_image_from_url(self, url: str, width_mm: float = None, alt: str = ''):
         """Add image from URL with specified width.
@@ -224,10 +268,73 @@ class CustomPDF(PDF):
         except Exception as e:
             print(f"⚠️  Warning: Could not add image to PDF: {e}")
             return False
+    
+    def add_generated_image(self, img: Image.Image, width_mm: float = 80):
+        """Add a generated image (PIL Image) to the PDF.
+        
+        Args:
+            img: PIL Image object
+            width_mm: Desired width in millimeters (default 80mm)
+        """
+        if img is None:
+            return False
+        
+        # Get current position
+        x = self.l_margin
+        y = self.get_y()
+        
+        # Calculate height maintaining aspect ratio
+        img_width_px, img_height_px = img.size
+        aspect_ratio = img_height_px / img_width_px
+        height_mm = width_mm * aspect_ratio
+        
+        # Check if image fits on current page
+        if y + height_mm > self.page_break_trigger:
+            self.add_page()
+            y = self.t_margin
+        
+        try:
+            # Save image to temporary bytes
+            img_bytes = BytesIO()
+            img.save(img_bytes, format='PNG')
+            img_bytes.seek(0)
+            
+            # Add image to PDF
+            self.image(img_bytes, x=x, y=y, w=width_mm, h=height_mm)
+            
+            # Move Y position after image
+            self.set_y(y + height_mm + 5)  # 5mm spacing after image
+            
+            return True
+        except Exception as e:
+            print(f"⚠️  Warning: Could not add generated image to PDF: {e}")
+            return False
+
+
+def extract_image_placeholders(markdown_content: str):
+    """Extract image placeholders from markdown content.
+    
+    Args:
+        markdown_content: Markdown content with placeholders
+        
+    Returns:
+        List of tuples: (placeholder_text, activity_name, start_pos, end_pos)
+    """
+    pattern = r'\[IMAGE_PLACEHOLDER:([^\]]+)\]'
+    placeholders = []
+    
+    for match in re.finditer(pattern, markdown_content):
+        full_placeholder = match.group(0)
+        activity_name = match.group(1)
+        start_pos = match.start()
+        end_pos = match.end()
+        placeholders.append((full_placeholder, activity_name, start_pos, end_pos))
+    
+    return placeholders
 
 
 def markdown_to_pdf(markdown_content: str, output_filepath: str) -> None:
-    """Convert markdown content to a styled PDF file.
+    """Convert markdown content to a styled PDF file with image generation.
     
     Args:
         markdown_content: The markdown-formatted text to convert
@@ -237,66 +344,77 @@ def markdown_to_pdf(markdown_content: str, output_filepath: str) -> None:
         Exception: If PDF generation fails
     """
     try:
-        # Sanitize content to remove emojis and unsupported characters
-        sanitized_content = sanitize_for_pdf(markdown_content)
-        # print("Sanitized content: ", sanitized_content)
+        # Extract image placeholders before processing
+        placeholders = extract_image_placeholders(markdown_content)
         
-        # Convert markdown to HTML with extras
-        html_content = markdown2.markdown(
-            sanitized_content,
-            extras=[
-                'fenced-code-blocks',
-                'tables',
-                'break-on-newline',
-                'header-ids',
-                'code-friendly'
-            ]
-        )
-
-        # Extract images from HTML
-        html_without_images, images = extract_images_from_html(html_content)
+        # Generate images for all placeholders (can be done in parallel later)
+        placeholder_images = {}
+        for placeholder_text, activity_name, start_pos, end_pos in placeholders:
+            print(f"📸 Preparing image for: {activity_name}")
+            img = generate_activity_image(activity_name)
+            if img:
+                placeholder_images[placeholder_text] = img
         
-        print("HTML content: ", html_content)
-        print(f"Extracted {len(images)} images")
-        
-        # Create PDF instance with custom image handling
+        # Create CustomPDF instance
         pdf = CustomPDF()
         pdf.add_page()
         pdf.set_auto_page_break(auto=True, margin=15)
         
-        # If no images, just write HTML normally
-        if len(images) == 0:
-            pdf.write_html(html_content)
-        else:
-            # Split HTML by image placeholders and process in segments
-            segments = html_without_images.split('[IMAGE_PLACEHOLDER_')
+        # Split markdown by placeholders to maintain order
+        # This approach: split content into segments, interleaved with placeholders
+        segments = []
+        current_pos = 0
+        
+        # Sort placeholders by position
+        sorted_placeholders = sorted(placeholders, key=lambda x: x[2])
+        
+        for placeholder_text, activity_name, start_pos, end_pos in sorted_placeholders:
+            # Add text segment before this placeholder
+            if start_pos > current_pos:
+                text_segment = markdown_content[current_pos:start_pos].strip()
+                if text_segment:
+                    segments.append(('text', text_segment))
             
-            for i, segment in enumerate(segments):
-                if i == 0:
-                    # First segment - write normally
-                    if segment.strip():
-                        pdf.write_html(segment)
+            # Add placeholder
+            segments.append(('image', placeholder_text, activity_name))
+            current_pos = end_pos
+        
+        # Add remaining text after last placeholder
+        if current_pos < len(markdown_content):
+            text_segment = markdown_content[current_pos:].strip()
+            if text_segment:
+                segments.append(('text', text_segment))
+        
+        # If no placeholders found, process entire content as one segment
+        if not segments:
+            segments.append(('text', markdown_content))
+        
+        # Process each segment
+        for segment in segments:
+            if segment[0] == 'text':
+                # Convert and write markdown segment
+                text_content = segment[1]
+                sanitized = sanitize_for_pdf(text_content)
+                html_content = markdown2.markdown(
+                    sanitized,
+                    extras=['fenced-code-blocks', 'tables', 'break-on-newline', 'header-ids', 'code-friendly']
+                )
+                pdf.write_html(html_content)
+            elif segment[0] == 'image':
+                # Insert generated image
+                placeholder_text = segment[1]
+                activity_name = segment[2]
+                
+                if placeholder_text in placeholder_images:
+                    img = placeholder_images[placeholder_text]
+                    pdf.add_generated_image(img, width_mm=80)
+                    print(f"✅ Image inserted for: {activity_name}")
                 else:
-                    # Segment contains image placeholder
-                    parts = segment.split(']', 1)
-                    img_index = int(parts[0]) if parts[0].isdigit() else None
-                    remaining_html = parts[1] if len(parts) > 1 else ''
-                    
-                    # Insert image if valid index
-                    if img_index is not None and img_index < len(images):
-                        img_info = images[img_index]
-                        width_mm = None
-                        if img_info['width'] is not None:
-                            width_mm = convert_width_to_mm(img_info['width'], img_info['width_unit'])
-                        
-                        pdf.add_image_from_url(img_info['src'], width_mm=width_mm, alt=img_info['alt'])
-                    
-                    # Write remaining HTML after image
-                    if remaining_html.strip():
-                        pdf.write_html(remaining_html)
+                    print(f"⚠️  No image available for: {activity_name}")
         
         # Output PDF
         pdf.output(output_filepath)
+        print(f"✅ PDF generated successfully: {output_filepath}")
         
     except Exception as e:
         raise Exception(f"PDF generation failed: {str(e)}")
