@@ -222,6 +222,15 @@ def generate_activity_image(activity_name: str) -> Image.Image:
 class CustomPDF(PDF):
     """Custom PDF class that handles image insertion and placeholder detection."""
     
+    def __init__(self, enable_image_generation: bool = False):
+        """Initialize CustomPDF with image generation setting.
+        
+        Args:
+            enable_image_generation: If True, generate and replace images. If False, skip image generation.
+        """
+        super().__init__()
+        self.enable_image_generation = enable_image_generation
+    
     def add_image_from_url(self, url: str, width_mm: float = None, alt: str = ''):
         """Add image from URL with specified width.
         
@@ -333,12 +342,13 @@ def extract_image_placeholders(markdown_content: str):
     return placeholders
 
 
-def markdown_to_pdf(markdown_content: str, output_filepath: str) -> None:
+def markdown_to_pdf(markdown_content: str, output_filepath: str, enable_image_generation: bool = True) -> None:
     """Convert markdown content to a styled PDF file with image generation.
     
     Args:
         markdown_content: The markdown-formatted text to convert
         output_filepath: Path where the PDF file should be saved
+        enable_image_generation: If True, generate and replace images. If False, skip image generation.
         
     Raises:
         Exception: If PDF generation fails
@@ -349,14 +359,17 @@ def markdown_to_pdf(markdown_content: str, output_filepath: str) -> None:
         
         # Generate images for all placeholders (can be done in parallel later)
         placeholder_images = {}
-        for placeholder_text, activity_name, start_pos, end_pos in placeholders:
-            print(f"📸 Preparing image for: {activity_name}")
-            img = generate_activity_image(activity_name)
-            if img:
-                placeholder_images[placeholder_text] = img
+        if enable_image_generation:
+            for placeholder_text, activity_name, start_pos, end_pos in placeholders:
+                print(f"📸 Preparing image for: {activity_name}")
+                img = generate_activity_image(activity_name)
+                if img:
+                    placeholder_images[placeholder_text] = img
+        else:
+            print("🖼️  Image generation disabled - skipping image generation and replacement")
         
         # Create CustomPDF instance
-        pdf = CustomPDF()
+        pdf = CustomPDF(enable_image_generation=enable_image_generation)
         pdf.add_page()
         pdf.set_auto_page_break(auto=True, margin=15)
         
@@ -401,14 +414,17 @@ def markdown_to_pdf(markdown_content: str, output_filepath: str) -> None:
                 )
                 pdf.write_html(html_content)
             elif segment[0] == 'image':
-                # Insert generated image
+                # Insert generated image (only if image generation is enabled)
                 placeholder_text = segment[1]
                 activity_name = segment[2]
                 
-                if placeholder_text in placeholder_images:
+                if enable_image_generation and placeholder_text in placeholder_images:
                     img = placeholder_images[placeholder_text]
                     pdf.add_generated_image(img, width_mm=80)
                     print(f"✅ Image inserted for: {activity_name}")
+                elif not enable_image_generation:
+                    # Skip image insertion when disabled
+                    pass
                 else:
                     print(f"⚠️  No image available for: {activity_name}")
         

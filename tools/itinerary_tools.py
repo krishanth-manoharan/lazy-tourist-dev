@@ -28,12 +28,13 @@ def update_itinerary_content(content: str) -> str:
     return f"✅ Itinerary content updated!\n\nPreview:\n{preview}"
 
 @tool
-def save_itinerary_to_file(filename: str, destination: str = "trip") -> str:
+def save_itinerary_to_file(filename: str, destination: str = "trip", enable_image_generation: bool = False) -> str:
     """Save the current itinerary content to a PDF file in the outputs directory.
     
     Args:
         filename: Optional custom filename (without extension)
         destination: Destination name for the filename
+        enable_image_generation: If True, generate and replace images. If False, skip image generation.
     
     Returns:
         Path to the saved file
@@ -61,7 +62,7 @@ def save_itinerary_to_file(filename: str, destination: str = "trip") -> str:
     # Save the file as PDF
     try:
         # Use the PDF writer utility to convert markdown to PDF
-        markdown_to_pdf(current_itinerary_content, filepath)
+        markdown_to_pdf(current_itinerary_content, filepath, enable_image_generation=enable_image_generation)
         return f"✅ Itinerary saved successfully to: {filepath}"
     except Exception as e:
         return f"❌ Error saving itinerary: {str(e)}"
