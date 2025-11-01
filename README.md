@@ -21,15 +21,32 @@ The system uses **LangGraph** to orchestrate multiple specialized agents in an i
 ```
 Initial Request
       ↓
-Extract Intent → Research Destination → Search Flights
+Extract Intent ←──┐ (if more info needed)
+      ↓          │
+      └──────────┘
+      ↓
+Research Destination → Search Flights
       ↓
 Search Hotels → Search Activities → Compile Itinerary
       ↓
-Format Output → GET FEEDBACK ← ┐
-      ↓                         │
-[User satisfied?]              │
-   Yes ↓        No →           │
-Save & Exit    Refine ─────────┘
+Format Output → GET FEEDBACK (shows itinerary by default)
+      ↓
+[User satisfied?]
+   Yes ↓        No →
+Save & Exit    Refine Itinerary
+                     │
+              ┌──────┴──────┐
+              │             │
+     Needs new search   Just recompile
+              │             │
+              ▼             ▼
+      Search Flights   Compile Itinerary
+              │             │
+              └──────┬──────┘
+                     ↓
+              Format Output
+                     ↓
+              GET FEEDBACK (loop)
 ```
 
 ### Agent Responsibilities

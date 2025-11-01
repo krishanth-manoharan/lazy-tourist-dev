@@ -171,7 +171,7 @@ def format_final_itinerary(state: TravelState) -> TravelState:
     1. A compelling creative title
     2. Trip Overview section with key details
     3. Flight Details section (outbound and return)
-    4. Accommodation section with hotel details [Do not include images]
+    4. Accommodation section with hotel details [Do not include images and show amenities in a single line]
     5. Day-by-Day Itinerary with all activities for each day
     6. Budget Breakdown section with a table
     7. Destination Tips section (if available)

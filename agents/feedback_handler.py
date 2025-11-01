@@ -9,23 +9,35 @@ import json
 def user_feedback_agent(state: TravelState) -> TravelState:
     """Handle user feedback and determine what to do next"""
     print("\n" + "="*60)
-    print("💬 USER FEEDBACK HANDLER - Waiting for your input...")
+    print("💬 USER FEEDBACK HANDLER")
     print("="*60)
     
-    # Show current itinerary summary
+    # Show itinerary by default when entering feedback handler
     if state.get("final_itinerary"):
-        print("\n📋 Current itinerary is ready for your review!")
+        print("\n" + "="*60)
+        print("📄 YOUR CURRENT ITINERARY")
+        print("="*60)
+        print(state.get("final_itinerary", "No itinerary generated yet."))
+        print("\n" + "="*60)
         print("\nYou can:")
-        print("  • Ask to see the full itinerary")
         print("  • Request changes (e.g., 'add more food activities', 'find cheaper hotels')")
         print("  • Say 'save' or 'looks good' to save and finish")
         print("  • Ask questions about the trip")
     
     # Get user input
-    user_feedback = input("\n💬 Your feedback (or 'save' to finish): ").strip()
+    try:
+        user_feedback = input("\n💬 Your feedback (or 'save' to finish): ").strip()
+    except (EOFError, KeyboardInterrupt) as e:
+        print("\n⚠️  Input error. Exiting...")
+        state["next_step"] = "end"
+        return state
     
+    # If empty input, treat as save
     if not user_feedback:
-        user_feedback = "show me the itinerary"
+        state["user_satisfied"] = True
+        state["next_step"] = "save_and_exit"
+        print("\n✅ Great! Saving your itinerary...")
+        return state
     
     # Store in conversation history
     conversation_history = state.get("conversation_history", [])
@@ -40,7 +52,7 @@ def user_feedback_agent(state: TravelState) -> TravelState:
         print("\n✅ Great! Saving your itinerary...")
         return state
     
-    # Check if user wants to see the itinerary
+    # Check if user wants to see the itinerary again - show it once more, then treat as save
     show_keywords = ['show', 'display', 'see', 'view', 'itinerary', 'what do you have']
     if any(keyword in user_feedback.lower() for keyword in show_keywords):
         print("\n" + "="*60)
@@ -48,11 +60,13 @@ def user_feedback_agent(state: TravelState) -> TravelState:
         print("="*60)
         print(state.get("final_itinerary", "No itinerary generated yet."))
         print("\n" + "="*60)
-        state["next_step"] = "get_feedback"
-        state["feedback_message"] = "Itinerary displayed. What would you like to change?"
+        # After showing, save and exit (no looping)
+        state["user_satisfied"] = True
+        state["next_step"] = "save_and_exit"
+        print("\n✅ Saving your itinerary...")
         return state
     
-    # User wants modifications
+    # User wants modifications - go to refine
     state["user_satisfied"] = False
     state["feedback_message"] = user_feedback
     state["next_step"] = "refine_itinerary"
@@ -127,14 +141,21 @@ def refine_itinerary_agent(state: TravelState) -> TravelState:
         HumanMessage(content=user_message)
     ]
     
-    response = model.invoke(messages)
+    try:
+        response = model.invoke(messages)
+    except Exception as e:
+        print(f"\n❌ Error during refinement: {e}")
+        print("⚠️  Exiting...")
+        state["next_step"] = "end"
+        return state
     
     try:
         refinement = json.loads(response.content)
         
         if refinement.get("clarifying_question"):
             print(f"\n❓ {refinement['clarifying_question']}")
-            state["next_step"] = "get_feedback"
+            print("\n⚠️  Feedback unclear. Saving itinerary as-is...")
+            state["next_step"] = "save_and_exit"
             return state
         
         # Update preferences based on feedback
@@ -184,8 +205,9 @@ def refine_itinerary_agent(state: TravelState) -> TravelState:
             print("\n📋 Updating your itinerary...")
         
     except json.JSONDecodeError:
-        # Fallback: just show what we understood
-        print(f"\n💭 I understand you want: {feedback}")
+        # Fallback: try to proceed with refinement anyway
+        print(f"\n⚠️  Could not parse refinement response, proceeding with basic updates...")
+        print(f"💭 I understand you want: {feedback}")
         print("Let me regenerate the itinerary with your preferences in mind...")
         state["next_step"] = "compile_itinerary"
     

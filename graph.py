@@ -43,19 +43,25 @@ def create_travel_agent_graph():
             return "research_destination"
     
     def route_after_feedback(state: TravelState) -> str:
-        """Route based on user feedback"""
-        next_step = state.get("next_step", "get_feedback")
+        """Route based on user feedback
+        
+        The feedback handler shows the itinerary by default when entered.
+        No looping - only three outcomes:
+        - save_and_exit: User wants to save and finish
+        - refine_itinerary: User wants modifications (will return to feedback after refinement)
+        - end: Error occurred, exit
+        """
+        next_step = state.get("next_step", "save_and_exit")
         
         if next_step == "save_and_exit":
             return "save_and_exit"
         elif next_step == "refine_itinerary":
             return "refine_itinerary"
-        elif next_step == "get_feedback":
-            return "get_feedback"
         elif next_step == "end":
             return "end"
         else:
-            return "get_feedback"
+            # Default to save if unclear
+            return "save_and_exit"
     
     def route_after_refinement(state: TravelState) -> str:
         """Route after refinement decision"""
@@ -87,28 +93,29 @@ def create_travel_agent_graph():
     graph.add_edge("search_activities", "compile_itinerary")
     graph.add_edge("compile_itinerary", "format_output")
     
-    # After formatting, always go to feedback
+    # After formatting, always go to feedback (itinerary is shown by default)
     graph.add_edge("format_output", "get_feedback")
     
-    # Feedback loop: user can refine, save, or continue asking
+    # Feedback handler: shows itinerary by default, no looping
+    # User can: save, refine, or exit on error
     graph.add_conditional_edges(
         "get_feedback",
         route_after_feedback,
         {
-            "get_feedback": "get_feedback",      # Loop back for more feedback
-            "refine_itinerary": "refine_itinerary",  # Go to refinement
+            "refine_itinerary": "refine_itinerary",  # Go to refinement (will return to feedback after)
             "save_and_exit": "save_and_exit",    # Save and exit
-            "end": END                            # End directly
+            "end": END                            # End on error
         }
     )
     
     # After refinement, decide whether to re-search or just recompile
+    # Both paths eventually return to get_feedback (which shows updated itinerary by default)
     graph.add_conditional_edges(
         "refine_itinerary",
         route_after_refinement,
         {
-            "search_flights": "search_flights",      # Re-do searches
-            "compile_itinerary": "compile_itinerary"  # Just recompile
+            "search_flights": "search_flights",      # Re-do searches (flows: flights->hotels->activities->compile->format->feedback)
+            "compile_itinerary": "compile_itinerary"  # Just recompile (flows: compile->format->feedback)
         }
     )
     
