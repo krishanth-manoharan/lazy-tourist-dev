@@ -1,17 +1,20 @@
 """Search agents for flights, hotels, and activities"""
 from agents.state import TravelState
-from tools.flight_tools import search_flights
+from tools.flight_tools import search_flights, search_return_flights
 from tools.hotel_tools import search_hotels
 from tools.activity_tools import search_activities, get_destination_info
 import json
 
 def flight_search_agent(state: TravelState) -> TravelState:
-    """Search for flight options"""
+    """Search for flight options - both outbound and return"""
     print("\n" + "="*60)
     print("✈️  FLIGHT SEARCH AGENT - Finding best flights...")
     print("="*60)
     
     prefs = state["preferences"]
+    
+    # Allocate 40% of budget to flights (both ways combined)
+    max_flight_price = int(prefs["budget"] * 0.4 / 2)  # Divide by 2 for outbound + return
     
     # Search for outbound flights
     result = search_flights.invoke({
@@ -19,10 +22,10 @@ def flight_search_agent(state: TravelState) -> TravelState:
         "destination": prefs["destination"],
         "departure_date": prefs["departure_date"],
         "passengers": prefs["total_passengers"],
-        "max_price": int(prefs["budget"] * 0.4)  # Allocate 40% of budget to flights
+        "max_price": max_flight_price
     })
     
-    # Parse result string to dict
+    # Parse outbound flight results
     try:
         flight_data = json.loads(result)
         flights = flight_data.get("flights", [])
@@ -33,8 +36,38 @@ def flight_search_agent(state: TravelState) -> TravelState:
             print(f"\n⚠️  {message}")
             print("   💡 Tip: Consider increasing your budget or adjusting your search criteria.")
         elif flights:
-            print(f"\n✅ Found {len(flights)} flight options:")
+            print(f"\n✅ Found {len(flights)} outbound flight options:")
             for i, flight in enumerate(flights, 1):
+                stops_text = "Direct" if flight.get("stops", 0) == 0 else f"{flight['stops']} stop(s)"
+                print(f"   {i}. {flight.get('airline', 'Unknown')} {flight.get('flight_number', '')} - "
+                      f"${flight.get('total_price', 0)} ({stops_text}) - {flight.get('duration', 'N/A')}")
+        
+    except Exception as e:
+        print(f"❌ Error parsing outbound flight results: {e}")
+        state["flights"] = []
+    
+    # Search for return flights
+    return_result = search_return_flights.invoke({
+        "origin": prefs["origin"],
+        "destination": prefs["destination"],
+        "return_date": prefs["return_date"],
+        "passengers": prefs["total_passengers"],
+        "max_price": max_flight_price
+    })
+    
+    # Parse return flight results
+    try:
+        return_flight_data = json.loads(return_result)
+        return_flights = return_flight_data.get("flights", [])
+        return_message = return_flight_data.get("message", "")
+        state["return_flights"] = return_flights
+        
+        if return_message:
+            print(f"\n⚠️  {return_message}")
+            print("   💡 Tip: Consider increasing your budget or adjusting your search criteria.")
+        elif return_flights:
+            print(f"\n✅ Found {len(return_flights)} return flight options:")
+            for i, flight in enumerate(return_flights, 1):
                 stops_text = "Direct" if flight.get("stops", 0) == 0 else f"{flight['stops']} stop(s)"
                 print(f"   {i}. {flight.get('airline', 'Unknown')} {flight.get('flight_number', '')} - "
                       f"${flight.get('total_price', 0)} ({stops_text}) - {flight.get('duration', 'N/A')}")
@@ -42,8 +75,8 @@ def flight_search_agent(state: TravelState) -> TravelState:
         state["next_step"] = "search_hotels"
         
     except Exception as e:
-        print(f"❌ Error parsing flight results: {e}")
-        state["flights"] = []
+        print(f"❌ Error parsing return flight results: {e}")
+        state["return_flights"] = []
         state["next_step"] = "search_hotels"
     
     return state

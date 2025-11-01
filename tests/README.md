@@ -2,54 +2,63 @@
 
 This directory contains automated tests for the Lazy Tourist Travel Planning Agent.
 
-## Available Tests
+## Unified Test Suite
 
-### `test_automated_conversation.py`
-Automated tests with mocked user inputs for conversational flow.
+All test scenarios have been consolidated into a single, comprehensive test suite for easier maintenance and execution.
 
-**Run:**
+### `test_agent.py`
+
+Unified test suite covering all scenarios:
+- Basic automated conversation
+- Conversational refinement
+- Missing information prompts
+- Partial query handling
+
+**Run All Tests:**
 ```bash
-# Basic automated conversation test
-python tests/test_automated_conversation.py
-
-# Test with refinement flow
-python tests/test_automated_conversation.py refine
+python tests/test_agent.py
 ```
 
-### `test_conversational.py`
-Interactive and basic flow tests.
-
-**Run:**
+**Run Specific Test:**
 ```bash
-# Interactive test (requires manual input)
-python tests/test_conversational.py
+# Basic conversation test
+python tests/test_agent.py basic
 
-# Automated basic flow test
-python tests/test_conversational.py basic
+# Refinement flow test
+python tests/test_agent.py refine
+
+# Missing information test
+python tests/test_agent.py missing
+
+# Partial query test
+python tests/test_agent.py partial
 ```
 
-### `test_missing_info.py`
-Tests the agent's ability to prompt for missing information.
+## Test Scenarios
 
-**Run:**
-```bash
-python tests/test_missing_info.py
-```
+### 1. Basic Conversation
+Tests the complete flow from initial query to saved itinerary with a complete query.
 
-## Running All Tests
+### 2. Refinement Flow
+Tests the agent's ability to handle user feedback and refine the itinerary based on requests.
 
-To run all automated tests sequentially:
+### 3. Missing Information
+Tests interactive prompting when critical information is missing from the initial query.
 
-```bash
-cd lazy-tourist
-python tests/test_automated_conversation.py && \
-python tests/test_conversational.py basic && \
-python tests/test_missing_info.py
-```
+### 4. Partial Query
+Tests handling of queries that have some information but are missing other critical fields.
 
 ## Requirements
 
 All tests require:
 - `.env` file with necessary API keys (see main README)
 - All dependencies installed (`pip install -r requirements.txt`)
+
+## Output
+
+Tests will display:
+- Progress indicators for each step
+- Test results (✅ PASSED or ❌ FAILED)
+- Summary of all test results
+- Generated itineraries saved in the `outputs/` directory
 

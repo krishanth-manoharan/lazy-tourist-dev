@@ -81,12 +81,14 @@ class TravelState(TypedDict):
     user_query: str
     preferences: TravelPreferences
     flights: List[FlightOption]
+    return_flights: List[FlightOption]
     hotels: List[HotelOption]
     activities: List[Activity]
     destination_info: Dict
     daily_itinerary: List[DayPlan]
     budget: BudgetBreakdown
     selected_flight: FlightOption
+    selected_return_flight: FlightOption
     selected_hotel: HotelOption
     next_step: str
     final_itinerary: str

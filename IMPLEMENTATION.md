@@ -752,7 +752,7 @@ def save_itinerary_agent(state: TravelState) -> TravelState:
 
 ### Tool Architecture
 
-**Design Pattern**: Decorated functions with mock data
+**Design Pattern**: Decorated functions with centralized mock data
 
 ```python
 from langchain_core.tools import tool
@@ -771,6 +771,47 @@ def search_flights(origin: str, destination: str,
     # Implementation
     return json.dumps(result)
 ```
+
+### Mock Data Organization
+
+**Structure**: Centralized mock data in dedicated `mocks/` directory
+
+```
+mocks/
+├── __init__.py
+├── flight_data.py      # Flight mock data
+├── hotel_data.py       # Hotel mock data
+└── activity_data.py    # Activity & destination mock data
+```
+
+**Benefits**:
+- **Separation of Concerns**: Data separated from business logic
+- **Easy Maintenance**: Update mock data without touching tool logic
+- **Reusability**: Mock data can be used across multiple tools and tests
+- **Scalability**: Easy to add new destinations or options
+- **Testing**: Simplified test data management
+
+**Import Pattern**:
+
+```python
+# tools/flight_tools.py
+from mocks.flight_data import MOCK_FLIGHTS, MOCK_RETURN_FLIGHTS
+
+# tools/hotel_tools.py  
+from mocks.hotel_data import MOCK_HOTELS
+
+# tools/activity_tools.py
+from mocks.activity_data import MOCK_ACTIVITIES, MOCK_DESTINATION_INFO
+```
+
+**Migration from Inline to Centralized**:
+
+| Before | After |
+|--------|-------|
+| Mock data defined in each tool file | Mock data in dedicated `mocks/` directory |
+| ~500 lines of data in `flight_tools.py` | Clean tool file, data imported |
+| Data duplication across files | Single source of truth |
+| Hard to find and update mock data | Organized by category |
 
 ### 1. Flight Tools (`tools/flight_tools.py`)
 
@@ -2221,63 +2262,121 @@ FLIGHT_PERCENT = float(os.getenv("FLIGHT_BUDGET_PERCENT", 0.4))
 
 ## Testing Strategy
 
-### Unit Tests
+### Unified Test Suite
 
-```python
-# tests/test_intent_extraction.py
-def test_extract_intent_basic():
-    state = {
-        "user_query": "5-day Paris trip for 2, budget $3000",
-        "preferences": {}
-    }
-    
-    result = extract_intent(state)
-    
-    assert result["preferences"]["destination"] == "Paris"
-    assert result["preferences"]["duration_days"] == 5
-    assert result["preferences"]["budget"] == 3000
+The testing infrastructure has been consolidated into a single, comprehensive test suite for easier maintenance and execution.
+
+**Test File**: `tests/test_agent.py`
+
+This unified suite covers all testing scenarios:
+- Basic automated conversation
+- Conversational refinement
+- Missing information prompts
+- Partial query handling
+
+### Running Tests
+
+```bash
+# Run all tests
+python tests/test_agent.py
+
+# Run specific test scenarios
+python tests/test_agent.py basic      # Basic conversation
+python tests/test_agent.py refine     # Refinement flow
+python tests/test_agent.py missing    # Missing info handling
+python tests/test_agent.py partial    # Partial query handling
 ```
 
-### Integration Tests
+### Test Architecture
+
+**Pattern**: Mock-based automated testing with simulated user inputs
 
 ```python
-# tests/test_full_workflow.py
-def test_full_itinerary_generation():
-    app = create_travel_agent_graph()
+def run_test(test_name: str, query: str, responses: list, max_steps: int = 30) -> bool:
+    """
+    Run a test scenario with simulated user inputs
     
-    initial_state = {...}
+    Args:
+        test_name: Name of the test
+        query: Initial user query
+        responses: List of simulated user responses
+        max_steps: Maximum steps before timeout
     
-    final_state = app.invoke(initial_state)
+    Returns:
+        True if test passed, False otherwise
+    """
+    # Mock input function
+    def mock_input(prompt):
+        return next(response_iter)
     
-    assert "final_itinerary" in final_state
-    assert len(final_state["daily_itinerary"]) == 5
-    assert final_state["budget"]["total"] <= 3000
+    # Run test with patched input
+    with patch('builtins.input', side_effect=mock_input):
+        for step_output in app.stream(initial_state):
+            # Process steps
+            pass
+    
+    return success
 ```
 
-### Conversational Tests
+### Test Scenarios
 
+#### 1. Basic Conversation Test
 ```python
-# tests/test_automated_conversation.py
-def test_feedback_loop():
-    """Simulate multi-turn conversation"""
-    app = create_travel_agent_graph()
-    
-    # Initial request
-    state = initial_state
-    
-    # First iteration
-    state = app.invoke(state)
-    
-    # Simulate feedback
-    state["feedback_message"] = "cheaper hotels"
-    state["next_step"] = "refine_itinerary"
-    
-    # Second iteration
-    state = app.invoke(state)
-    
-    # Assert refinement occurred
-    assert state["selected_hotel"]["price_per_night"] < 150
+def test_basic_conversation():
+    """Test complete flow with full query"""
+    return run_test(
+        test_name="BASIC CONVERSATION TEST",
+        query="Plan a 3-day trip to Paris for 2 adults, budget $2000, love food",
+        responses=["save"]
+    )
 ```
+
+#### 2. Refinement Test
+```python
+def test_refinement():
+    """Test conversation with refinement requests"""
+    return run_test(
+        test_name="REFINEMENT TEST",
+        query="4-day Bali trip for 2, budget $2500, love beaches",
+        responses=[
+            "show me the itinerary",
+            "find a cheaper hotel",
+            "save"
+        ]
+    )
+```
+
+#### 3. Missing Information Test
+```python
+def test_missing_info():
+    """Test incomplete query with prompts"""
+    return run_test(
+        test_name="MISSING INFORMATION TEST",
+        query="I want to travel",
+        responses=[
+            "San Francisco",  # Where from?
+            "Tokyo",          # Where to?
+            "5",              # Days?
+            "2",              # Adults?
+            "4000",           # Budget?
+            "save"
+        ]
+    )
+```
+
+### Test Benefits
+
+**Before (3 separate test files)**:
+- `test_automated_conversation.py`
+- `test_conversational.py`
+- `test_missing_info.py`
+
+**After (1 unified test file)**:
+- Easier maintenance
+- Consistent testing patterns
+- Reduced code duplication
+- Better test coverage visibility
+- Single entry point for all tests
 
 ---
 

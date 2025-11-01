@@ -13,16 +13,22 @@ def compile_itinerary(state: TravelState) -> TravelState:
     
     prefs = state["preferences"]
     flights = state.get("flights", [])
+    return_flights = state.get("return_flights", [])
     hotels = state.get("hotels", [])
     activities = state.get("activities", [])
     
     # Select best options (for now, select first/cheapest)
     selected_flight = flights[0] if flights else None
+    selected_return_flight = return_flights[0] if return_flights else None
     selected_hotel = hotels[0] if hotels else None
     
     if selected_flight:
         state["selected_flight"] = selected_flight
-        print(f"\n✈️  Selected Flight: {selected_flight.get('airline')} {selected_flight.get('flight_number')} - ${selected_flight.get('total_price')}")
+        print(f"\n✈️  Selected Outbound Flight: {selected_flight.get('airline')} {selected_flight.get('flight_number')} - ${selected_flight.get('total_price')}")
+    
+    if selected_return_flight:
+        state["selected_return_flight"] = selected_return_flight
+        print(f"✈️  Selected Return Flight: {selected_return_flight.get('airline')} {selected_return_flight.get('flight_number')} - ${selected_return_flight.get('total_price')}")
     
     if selected_hotel:
         state["selected_hotel"] = selected_hotel
@@ -93,7 +99,9 @@ def compile_itinerary(state: TravelState) -> TravelState:
     state["daily_itinerary"] = daily_itinerary
     
     # Calculate budget
-    flight_cost = selected_flight.get("total_price", 0) if selected_flight else 0
+    outbound_flight_cost = selected_flight.get("total_price", 0) if selected_flight else 0
+    return_flight_cost = selected_return_flight.get("total_price", 0) if selected_return_flight else 0
+    total_flight_cost = outbound_flight_cost + return_flight_cost
     hotel_cost = selected_hotel.get("total_price", 0) if selected_hotel else 0
     activity_cost = sum(day.get("estimated_cost", 0) for day in daily_itinerary)
     
@@ -103,10 +111,10 @@ def compile_itinerary(state: TravelState) -> TravelState:
     transportation_total = 100  # Local transport estimate
     misc_total = 200  # Miscellaneous
     
-    total_cost = flight_cost + hotel_cost + activity_cost + meals_total + transportation_total + misc_total
+    total_cost = total_flight_cost + hotel_cost + activity_cost + meals_total + transportation_total + misc_total
     
     budget_breakdown = {
-        "flights": flight_cost,
+        "flights": total_flight_cost,
         "accommodation": hotel_cost,
         "activities": activity_cost,
         "meals": meals_total,
@@ -119,7 +127,9 @@ def compile_itinerary(state: TravelState) -> TravelState:
     state["budget"] = budget_breakdown
     
     print(f"\n💰 Budget Breakdown:")
-    print(f"   Flights: ${budget_breakdown['flights']}")
+    print(f"   Flights (Round-trip): ${budget_breakdown['flights']}")
+    print(f"     → Outbound: ${outbound_flight_cost}")
+    print(f"     → Return: ${return_flight_cost}")
     print(f"   Accommodation: ${budget_breakdown['accommodation']}")
     print(f"   Activities: ${budget_breakdown['activities']}")
     print(f"   Meals: ${budget_breakdown['meals']}")
@@ -147,6 +157,7 @@ def format_final_itinerary(state: TravelState) -> TravelState:
     
     prefs = state["preferences"]
     selected_flight = state.get("selected_flight", {})
+    selected_return_flight = state.get("selected_return_flight", {})
     selected_hotel = state.get("selected_hotel", {})
     daily_itinerary = state.get("daily_itinerary", [])
     budget = state.get("budget", {})
@@ -172,11 +183,22 @@ def format_final_itinerary(state: TravelState) -> TravelState:
 **Outbound Flight:**  
 - **Airline:** {selected_flight.get('airline', 'N/A')} {selected_flight.get('flight_number', '')}  
 - **Route:** {selected_flight.get('departure', 'N/A')} → {selected_flight.get('arrival', 'N/A')}  
-- **Departure:** {selected_flight.get('departure_time', 'N/A')}  
+- **Departure:** {selected_flight.get('departure_time', 'N/A')} on {prefs.get('departure_date', 'N/A')}  
 - **Arrival:** {selected_flight.get('arrival_time', 'N/A')}  
 - **Duration:** {selected_flight.get('duration', 'N/A')}  
 - **Stops:** {selected_flight.get('stops', 0)}  
 - **Price:** ${selected_flight.get('total_price', 0)} (${selected_flight.get('price_per_person', 0)}/person)
+
+**Return Flight:**  
+- **Airline:** {selected_return_flight.get('airline', 'N/A')} {selected_return_flight.get('flight_number', '')}  
+- **Route:** {selected_return_flight.get('departure', 'N/A')} → {selected_return_flight.get('arrival', 'N/A')}  
+- **Departure:** {selected_return_flight.get('departure_time', 'N/A')} on {prefs.get('return_date', 'N/A')}  
+- **Arrival:** {selected_return_flight.get('arrival_time', 'N/A')}  
+- **Duration:** {selected_return_flight.get('duration', 'N/A')}  
+- **Stops:** {selected_return_flight.get('stops', 0)}  
+- **Price:** ${selected_return_flight.get('total_price', 0)} (${selected_return_flight.get('price_per_person', 0)}/person)
+
+**Total Flight Cost:** ${selected_flight.get('total_price', 0) + selected_return_flight.get('total_price', 0)}
 
 ---
 

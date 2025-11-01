@@ -1,135 +1,8 @@
 """Flight search tools with mocked API responses"""
 from langchain_core.tools import tool
 from typing import Dict, List
-import random
 import json
-from datetime import datetime, timedelta
-
-# Mock flight data
-MOCK_FLIGHTS = {
-    "NYC-PARIS": [
-        {
-            "airline": "Air France",
-            "flight_number": "AF007",
-            "departure": "JFK",
-            "arrival": "CDG",
-            "duration": "7h 30m",
-            "price": 650,
-            "stops": 0,
-            "departure_time": "22:30",
-            "arrival_time": "12:00+1"
-        },
-        {
-            "airline": "Delta",
-            "flight_number": "DL264",
-            "departure": "JFK",
-            "arrival": "CDG",
-            "duration": "8h 15m",
-            "price": 580,
-            "stops": 0,
-            "departure_time": "18:15",
-            "arrival_time": "07:30+1"
-        },
-        {
-            "airline": "United",
-            "flight_number": "UA57",
-            "departure": "EWR",
-            "arrival": "CDG",
-            "duration": "7h 45m",
-            "price": 720,
-            "stops": 0,
-            "departure_time": "20:00",
-            "arrival_time": "09:45+1"
-        }
-    ],
-    "NYC-BALI": [
-        {
-            "airline": "Qatar Airways",
-            "flight_number": "QR701",
-            "departure": "JFK",
-            "arrival": "DPS",
-            "duration": "22h 30m",
-            "price": 1150,
-            "stops": 1,
-            "layover": "DOH - 3h 20m",
-            "departure_time": "23:00",
-            "arrival_time": "06:30+2"
-        },
-        {
-            "airline": "Singapore Airlines",
-            "flight_number": "SQ21",
-            "departure": "JFK",
-            "arrival": "DPS",
-            "duration": "24h 15m",
-            "price": 1280,
-            "stops": 1,
-            "layover": "SIN - 4h 10m",
-            "departure_time": "01:30",
-            "arrival_time": "10:45+2"
-        },
-        {
-            "airline": "Korean Air",
-            "flight_number": "KE086",
-            "departure": "JFK",
-            "arrival": "DPS",
-            "duration": "23h 45m",
-            "price": 1050,
-            "stops": 1,
-            "layover": "ICN - 2h 50m",
-            "departure_time": "13:45",
-            "arrival_time": "22:30+2"
-        }
-    ],
-    "NYC-TOKYO": [
-        {
-            "airline": "ANA",
-            "flight_number": "NH9",
-            "departure": "JFK",
-            "arrival": "NRT",
-            "duration": "14h 10m",
-            "price": 950,
-            "stops": 0,
-            "departure_time": "13:10",
-            "arrival_time": "16:20+1"
-        },
-        {
-            "airline": "JAL",
-            "flight_number": "JL006",
-            "departure": "JFK",
-            "arrival": "HND",
-            "duration": "13h 50m",
-            "price": 1020,
-            "stops": 0,
-            "departure_time": "11:50",
-            "arrival_time": "14:40+1"
-        }
-    ],
-    "DEFAULT": [
-        {
-            "airline": "International Airways",
-            "flight_number": "IA123",
-            "departure": "ORIGIN",
-            "arrival": "DEST",
-            "duration": "8h 00m",
-            "price": 800,
-            "stops": 0,
-            "departure_time": "10:00",
-            "arrival_time": "18:00"
-        },
-        {
-            "airline": "Global Airlines",
-            "flight_number": "GA456",
-            "departure": "ORIGIN",
-            "arrival": "DEST",
-            "duration": "9h 30m",
-            "price": 650,
-            "stops": 1,
-            "layover": "HUB - 2h",
-            "departure_time": "14:00",
-            "arrival_time": "23:30"
-        }
-    ]
-}
+from mocks.flight_data import MOCK_FLIGHTS, MOCK_RETURN_FLIGHTS
 
 @tool
 def search_flights(origin: str, destination: str, departure_date: str, passengers: int = 2, max_price: int = 2000) -> str:
@@ -191,6 +64,74 @@ def search_flights(origin: str, destination: str, departure_date: str, passenger
     
     if not filtered_flights:
         result["message"] = f"No flights found from {origin} to {destination} under ${max_price} per person."
+    else:
+        for flight in filtered_flights[:3]:  # Return top 3 options
+            flight_copy = flight.copy()
+            flight_copy["total_price"] = flight["price"] * passengers
+            flight_copy["price_per_person"] = flight["price"]
+            result["flights"].append(flight_copy)
+    
+    return json.dumps(result)
+
+@tool
+def search_return_flights(origin: str, destination: str, return_date: str, passengers: int = 2, max_price: int = 2000) -> str:
+    """Search for return flights from destination back to origin.
+    
+    Args:
+        origin: Original departure city (where to return to)
+        destination: Current location (where returning from)
+        return_date: Return date in format YYYY-MM-DD
+        passengers: Number of passengers (default: 2)
+        max_price: Maximum price per person (default: 2000)
+    
+    Returns:
+        JSON string with available return flight options
+    """
+    print(f"\n🛬 Searching return flights: {destination} → {origin} for {passengers} passengers on {return_date}")
+    
+    # Normalize inputs (reverse direction for return)
+    origin_key = origin.upper()
+    dest_key = destination.upper()
+    
+    # Find matching return flights (destination to origin)
+    search_key = f"{dest_key}-{origin_key}"
+    flights = None
+    
+    # Try exact match first
+    if search_key in MOCK_RETURN_FLIGHTS:
+        flights = MOCK_RETURN_FLIGHTS[search_key]
+    else:
+        # Try partial matches
+        for key in MOCK_RETURN_FLIGHTS.keys():
+            if key == "DEFAULT":
+                continue
+            if "-" in key:
+                key_origin, _ = key.split("-", 1)
+                if key_origin in dest_key or dest_key in key_origin:
+                    flights = MOCK_RETURN_FLIGHTS[key]
+                    break
+    
+    # Use default if no match
+    if not flights:
+        flights = MOCK_RETURN_FLIGHTS["DEFAULT"]
+    
+    # Filter by price and format response
+    filtered_flights = [f for f in flights if f["price"] <= max_price]
+    
+    # Calculate total prices
+    result = {
+        "search_params": {
+            "origin": destination,  # Returning from destination
+            "destination": origin,  # Returning to origin
+            "date": return_date,
+            "passengers": passengers
+        },
+        "flights": [],
+        "message": ""
+    }
+    
+    if not filtered_flights:
+        result["message"] = f"No return flights found from {destination} to {origin} under ${max_price} per person."
     else:
         for flight in filtered_flights[:3]:  # Return top 3 options
             flight_copy = flight.copy()
