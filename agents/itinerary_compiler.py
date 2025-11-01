@@ -148,9 +148,9 @@ def compile_itinerary(state: TravelState) -> TravelState:
     return state
 
 def format_final_itinerary(state: TravelState) -> TravelState:
-    """Format the final itinerary in a beautiful markdown format"""
+    """Format the final itinerary in a beautiful markdown format using LLM"""
     print("\n" + "="*60)
-    print("📄 FORMATTER - Creating beautiful itinerary document...")
+    print("📄 FORMATTER - Using AI to create beautiful itinerary document...")
     print("="*60)
     
     from tools.itinerary_tools import set_itinerary_content
@@ -163,165 +163,113 @@ def format_final_itinerary(state: TravelState) -> TravelState:
     budget = state.get("budget", {})
     dest_info = state.get("destination_info", {})
     
-    markdown = f"""# 🌍 Your Personalized Travel Itinerary
-    ## {prefs.get('destination', 'Destination')} Adventure
-
-    ---
-
-    ## 📋 Trip Overview
-
-    **Destination:** {prefs.get('destination', 'N/A')}  
-    **Dates:** {prefs.get('departure_date', 'N/A')} to {prefs.get('return_date', 'N/A')}  
-    **Duration:** {prefs.get('duration_days', 0)} days  
-    **Travelers:** {prefs.get('num_adults', 0)} adults, {prefs.get('num_children', 0)} children  
-    **Budget:** ${prefs.get('budget', 0)}
-
-    ---
-
-    ## ✈️ Flight Details
-
-    **Outbound Flight:**  
-    - **Airline:** {selected_flight.get('airline', 'N/A')} {selected_flight.get('flight_number', '')}  
-    - **Route:** {selected_flight.get('departure', 'N/A')} → {selected_flight.get('arrival', 'N/A')}  
-    - **Departure:** {selected_flight.get('departure_time', 'N/A')} on {prefs.get('departure_date', 'N/A')}  
-    - **Arrival:** {selected_flight.get('arrival_time', 'N/A')}  
-    - **Duration:** {selected_flight.get('duration', 'N/A')}  
-    - **Stops:** {selected_flight.get('stops', 0)}  
-    - **Price:** ${selected_flight.get('total_price', 0)} (${selected_flight.get('price_per_person', 0)}/person)
-
-    **Return Flight:**  
-    - **Airline:** {selected_return_flight.get('airline', 'N/A')} {selected_return_flight.get('flight_number', '')}  
-    - **Route:** {selected_return_flight.get('departure', 'N/A')} → {selected_return_flight.get('arrival', 'N/A')}  
-    - **Departure:** {selected_return_flight.get('departure_time', 'N/A')} on {prefs.get('return_date', 'N/A')}  
-    - **Arrival:** {selected_return_flight.get('arrival_time', 'N/A')}  
-    - **Duration:** {selected_return_flight.get('duration', 'N/A')}  
-    - **Stops:** {selected_return_flight.get('stops', 0)}  
-    - **Price:** ${selected_return_flight.get('total_price', 0)} (${selected_return_flight.get('price_per_person', 0)}/person)
-
-    **Total Flight Cost:** ${selected_flight.get('total_price', 0) + selected_return_flight.get('total_price', 0)}
-
-    ---
-
-    ## 🏨 Accommodation
-
-    **Hotel:** {selected_hotel.get('name', 'N/A')}  
-    **Rating:** {selected_hotel.get('stars', 0)}⭐ ({selected_hotel.get('rating', 0)}/5.0 - {selected_hotel.get('reviews', 0)} reviews)  
-    **Location:** {selected_hotel.get('location', 'N/A')} - {selected_hotel.get('distance_to_center', 'N/A')}  
-    **Price:** ${selected_hotel.get('price_per_night', 0)}/night × {selected_hotel.get('nights', 0)} nights = ${selected_hotel.get('total_price', 0)}
-
-    **Amenities:**  
-    """
+    model = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
     
-    for amenity in selected_hotel.get('amenities', []):
-        markdown += f"- {amenity}\n"
+    system_prompt = """You are an expert travel itinerary formatter. Your task is to create a beautiful, well-structured markdown document for a travel itinerary.
+
+    Create a professional markdown document with the following structure:
+    1. A compelling creative title
+    2. Trip Overview section with key details
+    3. Flight Details section (outbound and return)
+    4. Accommodation section with hotel details
+    5. Day-by-Day Itinerary with all activities for each day
+    6. Budget Breakdown section with a table
+    7. Destination Tips section (if available)
+    8. A closing message
+
+    Use appropriate emojis, formatting, and structure to make it visually appealing and easy to read.
+    Use markdown tables, lists, bold text, and proper headings.
+    Include all the information provided - don't omit any details.
+    Make it engaging and travel-friendly.
     
-    markdown += f"""
-    ---
-
-    ## 📅 Day-by-Day Itinerary
-
-    """
+    IMPORTANT - Image formatting:
+    - If you include images (from image_url fields), always use HTML img tags with explicit width attribute
+    - Format images as: <img src="URL" alt="description" width="80mm">
+    - DO NOT use CSS style attributes like style="max-width: 80mm" - use the width attribute directly
+    - This ensures images are properly sized for PDF generation and don't overflow the page"""
     
-    for day_plan in daily_itinerary:
-        markdown += f"""### Day {day_plan['day']} - {day_plan['date']}
-    *{day_plan['notes']}*
-
-    """
-        for activity in day_plan.get('activities', []):
-            markdown += f"""**{activity.get('name', 'Activity')}**  
-    """
-            if activity.get('category'):
-                markdown += f"- Category: {activity['category']}\n"
-            if activity.get('duration'):
-                markdown += f"- Duration: {activity['duration']}\n"
-            if activity.get('price', 0) > 0:
-                markdown += f"- Price: ${activity['price']}\n"
-            if activity.get('rating'):
-                markdown += f"- Rating: ⭐{activity['rating']}/5.0\n"
-            if activity.get('description'):
-                markdown += f"- {activity['description']}\n"
-            if activity.get('best_time'):
-                markdown += f"- Best time: {activity['best_time']}\n"
-            markdown += "\n"
-        
-        if day_plan.get('estimated_cost', 0) > 0:
-            markdown += f"**Estimated cost for day:** ${day_plan['estimated_cost']}\n"
-        markdown += "\n---\n\n"
+    # Build comprehensive user message with all itinerary data
+    itinerary_data = {
+        "preferences": prefs,
+        "outbound_flight": selected_flight,
+        "return_flight": selected_return_flight,
+        "hotel": selected_hotel,
+        "daily_itinerary": daily_itinerary,
+        "budget": budget,
+        "destination_info": dest_info
+    }
     
-    markdown += f"""## 💰 Budget Breakdown
+    user_message = f"""Create a beautiful markdown itinerary document using the following travel data:
 
-    | Category | Cost |
-    |----------|------|
-    | Flights | ${budget.get('flights', 0)} |
-    | Accommodation | ${budget.get('accommodation', 0)} |
-    | Activities | ${budget.get('activities', 0)} |
-    | Meals (estimated) | ${budget.get('meals', 0)} |
-    | Local Transportation | ${budget.get('transportation', 0)} |
-    | Miscellaneous | ${budget.get('miscellaneous', 0)} |
-    | **TOTAL** | **${budget.get('total', 0)}** |
+    TRIP PREFERENCES:
+    - Destination: {prefs.get('destination', 'N/A')}
+    - Dates: {prefs.get('departure_date', 'N/A')} to {prefs.get('return_date', 'N/A')}
+    - Duration: {prefs.get('duration_days', 0)} days
+    - Travelers: {prefs.get('num_adults', 0)} adults, {prefs.get('num_children', 0)} children
+    - Budget: ${prefs.get('budget', 0)}
+    - Interests: {', '.join(prefs.get('interests', []))}
 
-    **Your Budget:** ${prefs.get('budget', 0)}  
-    """
+    OUTBOUND FLIGHT:
+    {json.dumps(selected_flight, indent=2) if selected_flight else "No outbound flight selected"}
+
+    RETURN FLIGHT:
+    {json.dumps(selected_return_flight, indent=2) if selected_return_flight else "No return flight selected"}
+
+    ACCOMMODATION:
+    {json.dumps(selected_hotel, indent=2) if selected_hotel else "No hotel selected"}
+
+    DAILY ITINERARY:
+    {json.dumps(daily_itinerary, indent=2) if daily_itinerary else "No daily itinerary"}
+
+    BUDGET BREAKDOWN:
+    {json.dumps(budget, indent=2) if budget else "No budget breakdown"}
+
+    DESTINATION INFORMATION:
+    {json.dumps(dest_info, indent=2) if dest_info else "No destination info available"}
+
+    Generate a complete, well-formatted markdown document that includes all this information in an organized and visually appealing way. Use proper markdown syntax including:
+    - Headers (#, ##, ###)
+    - Bold text (**text**)
+    - Lists (- item)
+    - Tables (| column | column |)
+    - No emojies
+    - Horizontal rules (---)
     
-    remaining = budget.get('remaining', 0)
-    if remaining >= 0:
-        markdown += f"**Remaining:** ${remaining} ✅\n"
-    else:
-        markdown += f"**Over Budget:** ${abs(remaining)} ⚠️\n"
+    IMAGE FORMATTING RULES:
+    - If hotel or activity data includes image_url fields, include the images in the appropriate sections
+    - ALWAYS format images using HTML img tags with explicit width attribute: <img src="URL" alt="description" width="80mm">
+    - DO NOT use CSS style attributes (style="max-width: 80mm") - the PDF library doesn't support them
+    - Never use raw markdown image syntax ![alt](url) for images that need size control
+    - Example: <img src="https://example.com/hotel.jpg" alt="Hotel view" width="80mm">
+    - The width attribute directly controls image size in the PDF output
+
+    Return ONLY the markdown content, no additional text or explanation."""
     
-    # Add destination tips
-    if dest_info:
-        markdown += f"""
-        ---
-
-        ## 🌟 Destination Tips
-
-        """
-        if dest_info.get('best_time_to_visit'):
-            markdown += f"**Best Time to Visit:** {dest_info['best_time_to_visit']}\n\n"
-        
-        if dest_info.get('currency'):
-            markdown += f"**Currency:** {dest_info['currency']}\n\n"
-        
-        if dest_info.get('language'):
-            markdown += f"**Language:** {dest_info['language']}\n\n"
-        
-        if dest_info.get('visa_requirements'):
-            visa = dest_info['visa_requirements']
-            markdown += "**Visa Requirements:**\n"
-            if isinstance(visa, dict):
-                for key, value in visa.items():
-                    markdown += f"- {key}: {value}\n"
-            markdown += "\n"
-        
-        if dest_info.get('safety_tips'):
-            markdown += "**Safety Tips:**\n"
-            for tip in dest_info['safety_tips']:
-                markdown += f"- {tip}\n"
-            markdown += "\n"
-        
-        if dest_info.get('local_tips'):
-            markdown += "**Local Tips:**\n"
-            for tip in dest_info['local_tips']:
-                markdown += f"- {tip}\n"
-            markdown += "\n"
-        
-        if dest_info.get('emergency_numbers'):
-            markdown += f"**Emergency Numbers:** {dest_info['emergency_numbers']}\n\n"
+    messages = [
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=user_message)
+    ]
     
-    markdown += """
-    ---
-
-    ## 🎉 Have a Wonderful Trip!
-
-    *This itinerary was created by your AI Travel Planning Agent*  
-    *All prices are estimates and should be verified at time of booking*
-    """
+    print("\n🤖 Generating markdown with AI...")
+    response = model.invoke(messages)
+    
+    # Extract markdown from LLM response
+    markdown = response.content.strip()
+    
+    # Clean up any code block markers if LLM wrapped it in them
+    if markdown.startswith("```markdown"):
+        markdown = markdown[11:].strip()
+    elif markdown.startswith("```"):
+        markdown = markdown[3:].strip()
+    if markdown.endswith("```"):
+        markdown = markdown[:-3].strip()
     
     state["final_itinerary"] = markdown
     
     # Store in global itinerary content for tools to access
     set_itinerary_content(markdown)
+    
+    print("\n✅ Markdown generated successfully!")
     
     # In conversational mode, go to feedback; otherwise complete
     if state.get("iteration_count", 0) == 0:

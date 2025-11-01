@@ -563,9 +563,42 @@ remaining = budget - total_cost
 
 ### 4. Formatter (`agents/itinerary_compiler.py`)
 
-**Purpose**: Generate beautiful markdown document
+**Purpose**: Generate beautiful markdown document using LLM
 
-**Template Structure**:
+**LLM-Based Generation**:
+
+The formatter uses GPT-4o-mini to generate well-structured, engaging markdown content from all itinerary data.
+
+**Process**:
+
+1. **Collect all itinerary data**: preferences, flights, hotels, activities, budget, destination info, daily itinerary
+2. **Format data as JSON**: Structure all information clearly for LLM consumption
+3. **LLM Prompt**: Request comprehensive markdown document with:
+   - Professional structure (title, sections, headers)
+   - Proper markdown formatting (tables, lists, bold text)
+   - Engaging content with appropriate emojis
+   - All provided information included
+4. **Extract markdown**: Parse LLM response and clean up any code block markers
+5. **Store in state**: Save to `final_itinerary` and global content store
+
+**LLM Prompt Structure**:
+
+```python
+system_prompt = """You are an expert travel itinerary formatter. Create a beautiful, 
+well-structured markdown document with:
+1. Compelling title with emoji
+2. Trip Overview section
+3. Flight Details section (outbound and return)
+4. Accommodation section
+5. Day-by-Day Itinerary
+6. Budget Breakdown section with table
+7. Destination Tips section (if available)
+8. Closing message
+
+Use appropriate emojis, formatting, and structure."""
+```
+
+**Expected Output Structure**:
 
 ```markdown
 # 🌍 Your Personalized Travel Itinerary
@@ -1534,7 +1567,8 @@ User Input
 ┌──────────────────────────────┐
 │  format_final_itinerary      │
 │  Input: All state            │
-│  Logic: Markdown templating  │
+│  Logic: LLM-generated        │
+│         markdown              │
 │  Output: final_itinerary     │
 │  Side: set_itinerary_content │
 └──────────────────────────────┘
@@ -2386,6 +2420,7 @@ def test_missing_info():
 
 **Current**: Multiple LLM calls per session
 - Intent extraction: 1 call
+- Markdown generation: 1 call
 - Refinement analysis: 1+ calls (per feedback)
 
 **Optimization**:
