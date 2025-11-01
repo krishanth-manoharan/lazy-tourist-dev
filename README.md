@@ -16,7 +16,7 @@ An interactive, multi-agent travel planning system that creates personalized, en
 
 ## 🏗️ Architecture
 
-The system uses **LangGraph** to orchestrate multiple specialized agents in an interactive feedback loop:
+The system uses **LangGraph** to orchestrate multiple specialized agents in an interactive feedback loop with intelligent decision-making:
 
 ```
 Initial Request
@@ -29,24 +29,29 @@ Research Destination → Search Flights
       ↓
 Search Hotels → Search Activities → Compile Itinerary
       ↓
-Format Output → GET FEEDBACK (shows itinerary by default)
+Format Output → GET FEEDBACK
       ↓
-[User satisfied?]
-   Yes ↓        No →
-Save & Exit    Refine Itinerary
-                     │
-              ┌──────┴──────┐
-              │             │
-     Needs new search   Just recompile
-              │             │
-              ▼             ▼
-      Search Flights   Compile Itinerary
-              │             │
-              └──────┬──────┘
-                     ↓
-              Format Output
-                     ↓
-              GET FEEDBACK (loop)
+      │ (shows itinerary by default)
+      ↓
+[LLM analyzes user feedback]
+      │
+      ├─── CLARIFY ──────┐ (basic questions)
+      │                  │ (shows assistant response only)
+      │                  │ (loops back to GET FEEDBACK)
+      │                  │
+      ├─── REFINE ───→ Refine Itinerary
+      │                  │
+      │                  ├── Needs new search → Search Flights → ...
+      │                  │
+      │                  └── Just recompile → Compile Itinerary
+      │                                           │
+      │                                           ↓
+      │                                    Format Output
+      │                                           │
+      │                                           ↓
+      │                                    GET FEEDBACK (shows updated itinerary)
+      │
+      └─── SAVE ───→ Save & Exit
 ```
 
 ### Agent Responsibilities
@@ -58,8 +63,11 @@ Save & Exit    Refine Itinerary
 - **Activity Research**: Discovers attractions & experiences
 - **Itinerary Compiler**: Compiles day-by-day plan
 - **Formatter**: Creates beautiful markdown output
-- **Feedback Handler**: Processes user feedback and updates preferences
-- **Refinement Agent**: Applies changes based on feedback
+- **Feedback Handler**: Uses LLM to intelligently analyze user feedback and decide:
+  - **CLARIFY**: Answer basic questions (loops back showing only assistant response)
+  - **REFINE**: Process itinerary modification requests
+  - **SAVE**: Detect satisfaction and save itinerary
+- **Refinement Agent**: Applies changes based on feedback and determines if new searches are needed
 
 ## 📁 Project Structure
 
@@ -144,18 +152,35 @@ Here's what a typical interaction looks like:
 
 [Agent creates itinerary...]
 
-💬 Your feedback (or 'save' to finish): show me the itinerary
+📄 YOUR CURRENT ITINERARY
+[...full itinerary displayed...]
 
-[Agent displays full itinerary]
+💬 Your feedback: What's the weather like in Paris in July?
+🤔 Analysis: User is asking a basic information question about weather
+💭 Paris in July is typically warm and pleasant, with average temperatures around 20-25°C (68-77°F)...
 
-💬 Your feedback (or 'save' to finish): Add more food activities and find a cheaper hotel
+💬 Your response: Thanks! Add more food activities
 
-[Agent updates itinerary with more food tours and budget hotel]
+🤔 Analysis: User wants to modify the itinerary by adding food activities
+🔄 I'll add more culinary experiences to your itinerary...
 
-💬 Your feedback (or 'save' to finish): Perfect! Save it
+[Agent updates itinerary with more food tours]
 
-✅ Itinerary saved to: outputs/itinerary_Paris_20251101_143227.md
+📄 YOUR CURRENT ITINERARY
+[...updated itinerary displayed...]
+
+💬 Your feedback: Perfect! This looks great
+
+🤔 Analysis: User is expressing satisfaction and wants to save
+✅ Great! Saving your itinerary...
+
+✅ Itinerary saved to: outputs/itinerary_Paris_20251101_143227.pdf
 ```
+
+**Key Features:**
+- **Intelligent Decision Making**: The LLM automatically determines if you're asking a question (clarification), requesting changes (refinement), or expressing satisfaction (save)
+- **Smart Looping**: Basic questions loop back to show just the assistant's answer (no itinerary clutter)
+- **Natural Conversation**: No need to use specific keywords - the assistant understands your intent
 
 ### Example Queries to Start With
 
@@ -217,6 +242,7 @@ Uses **gpt-4o-mini** for:
 - Intent extraction from natural language
 - Intelligent agent reasoning
 - Natural language generation
+- **Feedback analysis and routing**: Automatically classifies user input as clarification questions, refinement requests, or save commands
 
 ## 🎨 Customization
 

@@ -283,6 +283,10 @@ def format_final_itinerary(state: TravelState) -> TravelState:
     print("\n✅ Markdown generated successfully!")
     
     # In conversational mode, go to feedback; otherwise complete
+    # Always set show_itinerary to True when going to feedback from format_output
+    state["show_itinerary"] = True
+    state["assistant_response"] = ""  # Clear any previous assistant response
+    
     if state.get("iteration_count", 0) == 0:
         state["next_step"] = "get_feedback"
         print("\n✅ Itinerary created! Getting your feedback...")

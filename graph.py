@@ -45,15 +45,17 @@ def create_travel_agent_graph():
     def route_after_feedback(state: TravelState) -> str:
         """Route based on user feedback
         
-        The feedback handler shows the itinerary by default when entered.
-        No looping - only three outcomes:
+        The feedback handler uses LLM to decide action:
+        - get_feedback: Clarification question - loop back to show assistant response
         - save_and_exit: User wants to save and finish
         - refine_itinerary: User wants modifications (will return to feedback after refinement)
         - end: Error occurred, exit
         """
         next_step = state.get("next_step", "save_and_exit")
         
-        if next_step == "save_and_exit":
+        if next_step == "get_feedback":
+            return "get_feedback"  # Loop back for clarification
+        elif next_step == "save_and_exit":
             return "save_and_exit"
         elif next_step == "refine_itinerary":
             return "refine_itinerary"
@@ -96,12 +98,13 @@ def create_travel_agent_graph():
     # After formatting, always go to feedback (itinerary is shown by default)
     graph.add_edge("format_output", "get_feedback")
     
-    # Feedback handler: shows itinerary by default, no looping
-    # User can: save, refine, or exit on error
+    # Feedback handler: uses LLM to decide action
+    # Can loop back to itself for clarification, or proceed to refine/save
     graph.add_conditional_edges(
         "get_feedback",
         route_after_feedback,
         {
+            "get_feedback": "get_feedback",       # Loop back for clarification (shows assistant response only)
             "refine_itinerary": "refine_itinerary",  # Go to refinement (will return to feedback after)
             "save_and_exit": "save_and_exit",    # Save and exit
             "end": END                            # End on error

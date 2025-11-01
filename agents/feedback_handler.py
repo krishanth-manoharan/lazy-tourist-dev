@@ -7,26 +7,28 @@ from langgraph.prebuilt import ToolNode
 import json
 
 def user_feedback_agent(state: TravelState) -> TravelState:
-    """Handle user feedback and determine what to do next"""
+    """Handle user feedback and determine what to do next using LLM decision"""
     print("\n" + "="*60)
     print("💬 USER FEEDBACK HANDLER")
     print("="*60)
     
-    # Show itinerary by default when entering feedback handler
-    if state.get("final_itinerary"):
+    # Check if we should show itinerary (default True, False during clarification loops)
+    show_itinerary = state.get("show_itinerary", True)
+    
+    # Show itinerary only if flag is True
+    if show_itinerary and state.get("final_itinerary"):
         print("\n" + "="*60)
         print("📄 YOUR CURRENT ITINERARY")
         print("="*60)
         print(state.get("final_itinerary", "No itinerary generated yet."))
         print("\n" + "="*60)
-        print("\nYou can:")
-        print("  • Request changes (e.g., 'add more food activities', 'find cheaper hotels')")
-        print("  • Say 'save' or 'looks good' to save and finish")
-        print("  • Ask questions about the trip")
     
     # Get user input
     try:
-        user_feedback = input("\n💬 Your feedback (or 'save' to finish): ").strip()
+        if show_itinerary:
+            user_feedback = input("\n💬 Your feedback: ").strip()
+        else:
+            user_feedback = input("\n💬 Your response: ").strip()
     except (EOFError, KeyboardInterrupt) as e:
         print("\n⚠️  Input error. Exiting...")
         state["next_step"] = "end"
@@ -42,38 +44,128 @@ def user_feedback_agent(state: TravelState) -> TravelState:
     # Store in conversation history
     conversation_history = state.get("conversation_history", [])
     conversation_history.append(f"User: {user_feedback}")
-    state["conversation_history"] = conversation_history
     
-    # Check if user wants to save
-    save_keywords = ['save', 'looks good', 'perfect', 'done', 'finish', 'exit', 'great', "i'm happy", "im happy"]
-    if any(keyword in user_feedback.lower() for keyword in save_keywords):
-        state["user_satisfied"] = True
-        state["next_step"] = "save_and_exit"
-        print("\n✅ Great! Saving your itinerary...")
+    # Use LLM to analyze feedback and decide action
+    model = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
+    
+    system_prompt = """You are a travel planning assistant analyzing user feedback.
+
+Your job is to determine the user's intent and decide what action to take:
+
+1. **CLARIFY**: If the user is asking a basic clarification question that doesn't require itinerary changes
+   - Questions about the trip, destination, weather, culture, etc.
+   - General information requests
+   - Simple "what" or "how" questions that can be answered directly
+
+2. **REFINE**: If the user wants to modify or change the itinerary
+   - Requests to add/remove activities
+   - Changes to hotels, flights, budget
+   - Modifications to dates, duration, or preferences
+   - Any request that requires updating the itinerary
+
+3. **SAVE**: If the user is satisfied and wants to save/finish
+   - Expressions of satisfaction ("looks good", "perfect", "save", etc.)
+   - Confirmation they're happy with the itinerary
+   - Requests to finish or exit
+
+Return a JSON object with:
+{
+    "action": "clarify" | "refine" | "save",
+    "reasoning": "Brief explanation of why this action was chosen",
+    "response": "If action is 'clarify', provide a helpful response to the user's question. If action is 'refine', provide a brief acknowledgment. If action is 'save', provide a confirmation message."
+}
+"""
+    
+    current_itinerary = state.get("final_itinerary", "")
+    prefs = state.get("preferences", {})
+    
+    # Build conversation context (use history BEFORE current message for prompt)
+    conversation_context = ""
+    if conversation_history:
+        # Use all but the last message (which is the current user feedback)
+        history_for_prompt = conversation_history[:-1] if len(conversation_history) > 0 else []
+        if history_for_prompt:
+            conversation_context = "\n\nPrevious conversation:\n" + "\n".join(history_for_prompt[-6:])  # Last 3 exchanges (6 messages)
+    
+    user_message = f"""
+Current itinerary context:
+- Destination: {prefs.get('destination', 'N/A')}
+- Duration: {prefs.get('duration_days', 'N/A')} days
+- Budget: ${prefs.get('budget', 'N/A')}
+{conversation_context}
+
+Current user feedback: "{user_feedback}"
+
+What action should be taken? Analyze if this is a clarification question, a refinement request, or a save request.
+"""
+    
+    messages = [
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=user_message)
+    ]
+    
+    try:
+        response = model.invoke(messages)
+        decision = json.loads(response.content)
+        
+        action = decision.get("action", "refine").lower()
+        reasoning = decision.get("reasoning", "")
+        response_text = decision.get("response", "")
+        
+        print(f"\n🤔 Analysis: {reasoning}")
+        
+        if action == "save":
+            state["user_satisfied"] = True
+            state["next_step"] = "save_and_exit"
+            state["show_itinerary"] = True  # Reset for next time
+            state["assistant_response"] = ""  # Clear response
+            if response_text:
+                print(f"\n✅ {response_text}")
+            else:
+                print("\n✅ Great! Saving your itinerary...")
+            return state
+        
+        elif action == "clarify":
+            # Store assistant response and loop back to get_feedback
+            assistant_msg = response_text if response_text else "I'm here to help! What would you like to know?"
+            state["assistant_response"] = assistant_msg
+            state["show_itinerary"] = False  # Don't show itinerary on next loop
+            state["next_step"] = "get_feedback"  # Loop back to same node
+            conversation_history.append(f"Assistant: {assistant_msg}")
+            state["conversation_history"] = conversation_history
+            
+            # Print the clarification response
+            print(f"\n💭 {assistant_msg}")
+            print("\n" + "="*60)
+            
+            return state
+        
+        else:  # refine
+            state["user_satisfied"] = False
+            state["feedback_message"] = user_feedback
+            state["next_step"] = "refine_itinerary"
+            state["show_itinerary"] = True  # Reset for next time after refinement
+            state["assistant_response"] = ""  # Clear response
+            conversation_history.append(f"Assistant: {response_text if response_text else 'Working on your changes...'}")
+            state["conversation_history"] = conversation_history
+            
+            if response_text:
+                print(f"\n🔄 {response_text}")
+            else:
+                print(f"\n🔄 I'll work on: {user_feedback}")
+            
+            return state
+    
+    except (json.JSONDecodeError, Exception) as e:
+        print(f"\n⚠️  Error analyzing feedback: {e}")
+        print("⚠️  Defaulting to refinement...")
+        # Fallback to refinement
+        state["user_satisfied"] = False
+        state["feedback_message"] = user_feedback
+        state["next_step"] = "refine_itinerary"
+        state["show_itinerary"] = True
+        state["assistant_response"] = ""
         return state
-    
-    # Check if user wants to see the itinerary again - show it once more, then treat as save
-    show_keywords = ['show', 'display', 'see', 'view', 'itinerary', 'what do you have']
-    if any(keyword in user_feedback.lower() for keyword in show_keywords):
-        print("\n" + "="*60)
-        print("📄 YOUR CURRENT ITINERARY")
-        print("="*60)
-        print(state.get("final_itinerary", "No itinerary generated yet."))
-        print("\n" + "="*60)
-        # After showing, save and exit (no looping)
-        state["user_satisfied"] = True
-        state["next_step"] = "save_and_exit"
-        print("\n✅ Saving your itinerary...")
-        return state
-    
-    # User wants modifications - go to refine
-    state["user_satisfied"] = False
-    state["feedback_message"] = user_feedback
-    state["next_step"] = "refine_itinerary"
-    
-    print(f"\n🔄 I'll work on: {user_feedback}")
-    
-    return state
 
 def refine_itinerary_agent(state: TravelState) -> TravelState:
     """Refine the itinerary based on user feedback"""
