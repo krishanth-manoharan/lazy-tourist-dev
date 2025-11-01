@@ -1,0 +1,137 @@
+# Lazy Tourist - AI Travel Planning Agent
+# Cursor Rules for Development
+
+## Project Overview
+Multi-agent travel planning system using LangGraph and GPT-4o-mini. Creates personalized itineraries through conversational refinement.
+
+## Tech Stack
+- **Framework**: LangGraph 0.2.62 for agent orchestration
+- **LLM**: OpenAI GPT-4o-mini via langchain-openai
+- **Language**: Python 3.11+
+- **State**: TypedDict with type annotations
+
+## Code Style
+
+### Agents
+- All agents follow signature: `def agent_name(state: TravelState) -> TravelState`
+- Extract data from state using `.get()` with defaults
+- Update state immutably (copy nested dicts before modifying)
+- Return updated state
+- Print progress banners with emojis (✅, ❌, ⚠️, 🔧)
+
+### Tools
+- Use `@tool` decorator from `langchain_core.tools`
+- Return JSON strings, not dicts: `return json.dumps(result)`
+- Include comprehensive docstrings (becomes tool description for LLM)
+- Mock data is in `mocks/` directory - keep tools clean
+
+### State Management
+- Use `.get()` with defaults: `prefs = state.get("preferences", {})`
+- Never mutate nested dicts directly
+- Always type convert: `int(prefs.get("budget", 3000))`
+- Update `next_step` field to control routing
+
+### Error Handling
+- Wrap JSON parsing in try/except
+- Provide fallback values on errors
+- Print user-friendly error messages
+- Continue execution when possible
+
+## Architecture Patterns
+
+### Agent Flow
+```
+extract_intent → research_destination → search_flights → 
+search_hotels → search_activities → compile_itinerary → 
+format_output → get_feedback → [refine loop or save]
+```
+
+### Budget Allocation
+- Flights: 40% of total budget
+- Hotels: 30% of total budget  
+- Activities: 20% of total budget
+- Buffer: 10% remaining
+
+### Feedback Loop
+- `get_feedback` node captures user input
+- Routes to: `save_and_exit`, `get_feedback` (show), or `refine_itinerary`
+- Refinement uses LLM to analyze feedback and update preferences
+- Decision: re-search vs just recompile
+
+## File Organization
+- `agents/` - Agent implementations
+- `tools/` - LangChain tool definitions
+- `mocks/` - Mock data (flights, hotels, activities)
+- `data/` - External API endpoint configurations
+- `utils/` - API client, PDF generation, and utilities
+- `tests/` - Test suite
+- `outputs/` - Generated itineraries
+
+## Testing
+Run unified test suite: `python tests/test_agent.py [basic|refine|missing|partial]`
+
+## Common Tasks
+
+### Adding New Agent
+1. Create function in appropriate file under `agents/`
+2. Follow agent signature pattern
+3. Add node to graph in `graph.py`
+4. Add edges to connect it in workflow
+
+### Adding New Tool
+1. Create function in appropriate file under `tools/`
+2. Use `@tool` decorator
+3. Add mock data to `mocks/` if needed
+4. Return JSON string
+
+### Adding Mock Data
+1. Add to appropriate file in `mocks/` directory
+2. Follow existing schema patterns
+3. Update imports in tool files
+
+### Adding External API
+1. Add API endpoint to `data/apis.py`
+2. Use `fetch_api_data()` from `utils/api_client` for direct calls
+3. Handle errors appropriately
+4. Example:
+```python
+from data.apis import API_ENDPOINT
+from utils.api_client import fetch_api_data
+
+try:
+    data = fetch_api_data(url=API_ENDPOINT)
+except Exception as e:
+    # Handle error - return empty results or error message
+    return json.dumps({"error": str(e), "data": []})
+```
+5. Optional: Use `fetch_api_data_with_fallback()` if fallback to mocks is desired
+
+### Extending State
+1. Update TypedDict in `agents/state.py`
+2. Use `total=False` for optional fields
+3. Update agents that need new fields
+
+## Best Practices
+- Keep agents focused on single responsibility
+- Use descriptive variable names
+- Print progress for user feedback
+- Handle missing data gracefully
+- Test with `tests/test_agent.py` before committing
+- Use environment variables for API keys (`.env` file)
+
+## LLM Prompts
+- Request JSON output with explicit schema
+- Include clear task description and rules
+- Handle parsing errors gracefully
+- Use SystemMessage + HumanMessage pattern
+
+## Important
+- After any change, make sure the change is updated properly in IMPLEMENTATION.MD and README.md
+
+## Don't
+- Don't mutate state directly
+- Don't use bare dictionary access (use `.get()`)
+- Don't return dicts from tools (return JSON strings)
+- Don't hardcode API keys
+- Don't create inline mock data (use `mocks/` directory)
+

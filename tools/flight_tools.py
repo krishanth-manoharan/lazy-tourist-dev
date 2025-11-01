@@ -1,8 +1,10 @@
-"""Flight search tools with mocked API responses"""
+"""Flight search tools using external APIs"""
 from langchain_core.tools import tool
 from typing import Dict, List
 import json
-from mocks.flight_data import MOCK_FLIGHTS, MOCK_RETURN_FLIGHTS
+from mocks.flight_data import MOCK_FLIGHTS, MOCK_RETURN_FLIGHTS  # Note: Mocks kept for reference but not used (APIs are primary source)
+from data.apis import OUTBOUND_FLIGHTS_API, RETURN_FLIGHTS_API
+from utils.api_client import fetch_api_data
 
 @tool
 def search_flights(origin: str, destination: str, departure_date: str, passengers: int = 2, max_price: int = 2000) -> str:
@@ -23,32 +25,51 @@ def search_flights(origin: str, destination: str, departure_date: str, passenger
     # Normalize inputs
     origin_key = origin.upper()
     dest_key = destination.upper()
-    
-    # Find matching flights
     search_key = f"{origin_key}-{dest_key}"
-    flights = None
     
-    # Try exact match first
-    if search_key in MOCK_FLIGHTS:
-        flights = MOCK_FLIGHTS[search_key]
-    else:
-        # Try partial matches - check if destination contains any known city
-        for key in MOCK_FLIGHTS.keys():
-            if key == "DEFAULT":
-                continue
-            # Extract destination from key (format: ORIGIN-DEST)
-            if "-" in key:
-                _, key_dest = key.split("-", 1)
-                if key_dest in dest_key or dest_key in key_dest:
-                    flights = MOCK_FLIGHTS[key]
-                    break
-    
-    # Use default if no match
-    if not flights:
-        flights = MOCK_FLIGHTS["DEFAULT"]
+    # Fetch from external API
+    try:
+        api_response = fetch_api_data(url=OUTBOUND_FLIGHTS_API)
+        # API returns route-based structure: {"NYC-PARIS": [...], "NYC-BALI": [...], ...}
+        flights = None
+        
+        # Try exact match first
+        if search_key in api_response:
+            flights = api_response[search_key]
+        else:
+            # Try partial matches - check if destination contains any known city
+            for key in api_response.keys():
+                if key == "DEFAULT":
+                    continue
+                # Extract destination from key (format: ORIGIN-DEST)
+                if "-" in key:
+                    _, key_dest = key.split("-", 1)
+                    if key_dest in dest_key or dest_key in key_dest:
+                        flights = api_response[key]
+                        break
+        
+        # Use default if no match
+        if not flights and "DEFAULT" in api_response:
+            flights = api_response["DEFAULT"]
+        
+        if not flights:
+            flights = []
+            
+    except Exception as e:
+        print(f"❌ Failed to fetch outbound flights from API: {str(e)}")
+        return json.dumps({
+            "search_params": {
+                "origin": origin,
+                "destination": destination,
+                "date": departure_date,
+                "passengers": passengers
+            },
+            "flights": [],
+            "message": f"Error fetching outbound flights: {str(e)}"
+        })
     
     # Filter by price and format response
-    filtered_flights = [f for f in flights if f["price"] <= max_price]
+    filtered_flights = [f for f in flights if f.get("price", 0) <= max_price]
     
     # Calculate total prices
     result = {
@@ -92,31 +113,50 @@ def search_return_flights(origin: str, destination: str, return_date: str, passe
     # Normalize inputs (reverse direction for return)
     origin_key = origin.upper()
     dest_key = destination.upper()
-    
-    # Find matching return flights (destination to origin)
     search_key = f"{dest_key}-{origin_key}"
-    flights = None
     
-    # Try exact match first
-    if search_key in MOCK_RETURN_FLIGHTS:
-        flights = MOCK_RETURN_FLIGHTS[search_key]
-    else:
-        # Try partial matches
-        for key in MOCK_RETURN_FLIGHTS.keys():
-            if key == "DEFAULT":
-                continue
-            if "-" in key:
-                key_origin, _ = key.split("-", 1)
-                if key_origin in dest_key or dest_key in key_origin:
-                    flights = MOCK_RETURN_FLIGHTS[key]
-                    break
+    # Fetch from external API
+    try:
+        api_response = fetch_api_data(url=RETURN_FLIGHTS_API)
+        # API returns route-based structure: {"PARIS-NYC": [...], "BALI-NYC": [...], ...}
+        flights = None
+        
+        # Try exact match first
+        if search_key in api_response:
+            flights = api_response[search_key]
+        else:
+            # Try partial matches
+            for key in api_response.keys():
+                if key == "DEFAULT":
+                    continue
+                if "-" in key:
+                    key_origin, _ = key.split("-", 1)
+                    if key_origin in dest_key or dest_key in key_origin:
+                        flights = api_response[key]
+                        break
+        
+        # Use default if no match
+        if not flights and "DEFAULT" in api_response:
+            flights = api_response["DEFAULT"]
+        
+        if not flights:
+            flights = []
+            
+    except Exception as e:
+        print(f"❌ Failed to fetch return flights from API: {str(e)}")
+        return json.dumps({
+            "search_params": {
+                "origin": destination,
+                "destination": origin,
+                "date": return_date,
+                "passengers": passengers
+            },
+            "flights": [],
+            "message": f"Error fetching return flights: {str(e)}"
+        })
     
-    # Use default if no match
-    if not flights:
-        flights = MOCK_RETURN_FLIGHTS["DEFAULT"]
-    
-    # Filter by price and format response
-    filtered_flights = [f for f in flights if f["price"] <= max_price]
+    # Filter by price
+    filtered_flights = [f for f in flights if f.get("price", 0) <= max_price]
     
     # Calculate total prices
     result = {
