@@ -1,0 +1,22 @@
+# Lazy Tourist - AI Travel Planning Agent
+# Requirements file
+
+# Core dependencies
+langchain==0.3.13
+langchain-core==0.3.28
+langchain-openai==0.2.14
+langgraph==0.2.62
+
+# OpenAI
+openai>=1.0.0
+
+# Environment variables
+python-dotenv==1.0.0
+
+# For graph visualization (optional)
+pygraphviz>=1.11
+pillow>=10.0.0
+
+# Utilities
+typing-extensions>=4.8.0
+
