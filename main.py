@@ -109,7 +109,10 @@ def run_travel_agent(show_graph: bool = False):
         "iteration_count": 0,
         "user_satisfied": False,
         "feedback_message": "",
-        "conversation_history": [f"User: {user_query}"]  # Include initial query in history
+        "conversation_history": [f"User: {user_query}"],  # Include initial query in history
+        "show_itinerary": True,
+        "assistant_response": "",
+        "user_feedback_input": ""
     }
     
     # Run the agent
@@ -118,28 +121,40 @@ def run_travel_agent(show_graph: bool = False):
         print("🎬 STARTING TRAVEL PLANNING...")
         print("="*60)
         
-        current_state = initial_state
         max_iterations = 10  # Prevent infinite loops
         iteration = 0
+        is_first_run = True
+        pending_state_update = None  # Track state updates from previous iteration
+        
+        # Use a thread ID for checkpointing - allows resuming from where we left off
+        thread_config = {"configurable": {"thread_id": "travel_planning_session"}}
         
         # Loop until we reach the end or max iterations
         while iteration < max_iterations:
             iteration += 1
             needs_input = False
+            last_node = None  # Track which node we're at
+            state_update = None  # Track state updates for current iteration
             
-            # Stream the graph execution
-            for step_output in app.stream(current_state):
-                # The stream yields state updates
+            # Stream the graph execution with checkpointing
+            # First iteration: pass full initial state (starts from START)
+            # Subsequent iterations: update checkpoint and pass None to resume
+            if is_first_run:
+                stream_input = initial_state
+                is_first_run = False
+            else:
+                # Update the checkpoint with state data from last iteration, then resume
+                if pending_state_update:
+                    app.update_state(thread_config, pending_state_update, as_node="get_feedback" if "user_feedback_input" in pending_state_update else "extract_intent")
+                stream_input = None  # Resume from checkpoint
+            
+            for step_output in app.stream(stream_input, thread_config, stream_mode="updates"):
+                # The stream yields state updates per node
                 if isinstance(step_output, dict):
-                    # Check if we've reached the end
-                    if "__end__" in step_output:
-                        print("\n" + "="*60)
-                        print("✅ TRAVEL PLANNING COMPLETE!")
-                        print("="*60)
-                        return
-                    
                     # Check if any step needs user input
                     for node_name, node_state in step_output.items():
+                        last_node = node_name
+                        
                         if node_name == "extract_intent":
                             if node_state.get("needs_user_input"):
                                 # Display the LLM's question
@@ -155,17 +170,56 @@ def run_travel_agent(show_graph: bool = False):
                                 conversation_history.append(f"Assistant: {feedback_msg}")
                                 conversation_history.append(f"User: {user_response}")
                                 
-                                # Update state - keep original user_query, rely on conversation_history for context
-                                current_state = node_state
-                                current_state["conversation_history"] = conversation_history
-                                current_state["needs_user_input"] = False
-                                # Note: NOT updating user_query - it stays as the original query
+                                # Prepare state update for next iteration (only the changes)
+                                state_update = {
+                                    "conversation_history": conversation_history,
+                                    "needs_user_input": False
+                                }
+                                
+                                needs_input = True
+                                break
+                        
+                        elif node_name == "get_feedback":
+                            if node_state.get("needs_user_input"):
+                                # Check if we should show itinerary or just get response
+                                show_itinerary = node_state.get("show_itinerary", True)
+                                
+                                # Display assistant response if it exists (for clarification)
+                                assistant_response = node_state.get("assistant_response", "")
+                                if assistant_response and not show_itinerary:
+                                    # Already printed by the agent, just get input
+                                    pass
+                                
+                                # Get user feedback with appropriate prompt
+                                try:
+                                    if show_itinerary:
+                                        user_feedback = input("\n💬 Your feedback: ").strip()
+                                    else:
+                                        user_feedback = input("\n💬 Your response: ").strip()
+                                except (EOFError, KeyboardInterrupt):
+                                    print("\n⚠️  Input error. Exiting...")
+                                    state_update = {
+                                        "next_step": "end",
+                                        "needs_user_input": False
+                                    }
+                                    needs_input = True
+                                    break
+                                
+                                # Prepare state update with user feedback
+                                state_update = {
+                                    "user_feedback_input": user_feedback,
+                                    "needs_user_input": False
+                                }
                                 
                                 needs_input = True
                                 break
                 
                 if needs_input:
                     break
+            
+            # Save state update for next iteration
+            if state_update:
+                pending_state_update = state_update
             
             # If we didn't need input, we're done
             if not needs_input:

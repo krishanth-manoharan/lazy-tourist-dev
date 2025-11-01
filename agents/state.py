@@ -99,4 +99,5 @@ class TravelState(TypedDict):
     conversation_history: List[str]
     show_itinerary: bool  # Flag to control when to show itinerary in feedback loop
     assistant_response: str  # Store assistant's clarification/response message
+    user_feedback_input: str  # User feedback input collected in main.py
 

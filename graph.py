@@ -1,5 +1,6 @@
 """LangGraph orchestration for Travel Planning Agent"""
 from langgraph.graph import StateGraph, START, END
+from langgraph.checkpoint.memory import MemorySaver
 from agents.state import TravelState
 from agents.intent_extractor import extract_intent
 from agents.search_agents import (
@@ -125,7 +126,9 @@ def create_travel_agent_graph():
     # After saving, end
     graph.add_edge("save_and_exit", END)
     
-    return graph.compile()
+    # Compile with checkpointing to enable resuming from where we left off
+    checkpointer = MemorySaver()
+    return graph.compile(checkpointer=checkpointer)
 
 def visualize_graph(app, output_file="travel_agent_graph.png"):
     """Generate and save the graph visualization"""

@@ -12,27 +12,30 @@ def user_feedback_agent(state: TravelState) -> TravelState:
     print("💬 USER FEEDBACK HANDLER")
     print("="*60)
     
-    # Check if we should show itinerary (default True, False during clarification loops)
-    show_itinerary = state.get("show_itinerary", True)
+    # Check if we already have user feedback from main loop
+    user_feedback = state.get("user_feedback_input", "").strip()
     
-    # Show itinerary only if flag is True
-    if show_itinerary and state.get("final_itinerary"):
-        print("\n" + "="*60)
-        print("📄 YOUR CURRENT ITINERARY")
-        print("="*60)
-        print(state.get("final_itinerary", "No itinerary generated yet."))
-        print("\n" + "="*60)
-    
-    # Get user input
-    try:
-        if show_itinerary:
-            user_feedback = input("\n💬 Your feedback: ").strip()
-        else:
-            user_feedback = input("\n💬 Your response: ").strip()
-    except (EOFError, KeyboardInterrupt) as e:
-        print("\n⚠️  Input error. Exiting...")
-        state["next_step"] = "end"
+    # If no feedback yet, signal main.py to collect it
+    if not user_feedback:
+        # Only show itinerary on the FIRST call (when we're about to ask for input)
+        # Don't show it on the second call when we have the input
+        show_itinerary = state.get("show_itinerary", True)
+        
+        # Show itinerary only if flag is True
+        if show_itinerary and state.get("final_itinerary"):
+            print("\n" + "="*60)
+            print("📄 YOUR CURRENT ITINERARY")
+            print("="*60)
+            print(state.get("final_itinerary", "No itinerary generated yet."))
+            print("\n" + "="*60)
+        
+        state["needs_user_input"] = True
+        state["show_itinerary"] = show_itinerary  # Pass flag to main for prompt
         return state
+    
+    # Clear the feedback input for next iteration
+    state["user_feedback_input"] = ""
+    state["needs_user_input"] = False
     
     # If empty input, treat as save
     if not user_feedback:
@@ -195,10 +198,22 @@ def refine_itinerary_agent(state: TravelState) -> TravelState:
     - About flights: Mention alternative options
     - Unclear: Ask clarifying questions
 
+    IMPORTANT: Set "requires_new_search" to TRUE if ANY of these change:
+    - Duration/number of days (affects hotel nights and return flight dates)
+    - Budget (need to find flights/hotels in new price range)
+    - Number of travelers (affects flight/hotel pricing and availability)
+    - Dates (departure or return dates change)
+    - Hotel star rating preference (need to search different tier)
+    
+    Set "requires_new_search" to FALSE only if:
+    - Only activities/interests are changing
+    - Minor adjustments to existing itinerary
+    - Just want to see different activity options
+
     Return a JSON object with:
     {
         "changes_needed": ["list of specific changes to make"],
-        "requires_new_search": false,  // true if need to search flights/hotels again
+        "requires_new_search": false,  // true if need to search flights/hotels again (see rules above)
         "clarifying_question": null,  // or a question if feedback is unclear
         "updated_summary": "Brief summary of what will change",
         "updated_preferences": {  // any preference changes extracted from feedback
@@ -287,8 +302,14 @@ def refine_itinerary_agent(state: TravelState) -> TravelState:
         
         print(f"\n💡 {refinement.get('updated_summary', '')}")
         
+        # Force re-search if critical preferences changed (override LLM decision for safety)
+        critical_changes = ["duration_days", "budget", "num_adults", "num_children", "min_hotel_stars"]
+        force_research = any(key in updated_prefs and updated_prefs[key] is not None for key in critical_changes)
+        
         # If requires new search, go back to searching
-        if refinement.get("requires_new_search"):
+        if refinement.get("requires_new_search") or force_research:
+            if force_research and not refinement.get("requires_new_search"):
+                print("\n⚠️  Critical preference changed - forcing new search for accurate results...")
             state["next_step"] = "search_flights"
             print("\n🔍 Will perform new searches based on your requirements...")
         else:

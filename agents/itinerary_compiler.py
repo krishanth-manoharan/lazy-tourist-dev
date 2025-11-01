@@ -253,6 +253,7 @@ def format_final_itinerary(state: TravelState) -> TravelState:
     - Include placeholders ONLY for actual tourist activities (not for travel/transfer activities like "Airport Transfer" or "Hotel Check-out")
     - Example: After describing "Eiffel Tower Visit" activity, add: [IMAGE_PLACEHOLDER:Eiffel Tower Visit]
     - Make sure every real activity has its placeholder - this is essential for PDF generation
+    - Do not include placeholder for checking in and out of the hotel
 
     Return ONLY the markdown content, no additional text or explanation."""
     
