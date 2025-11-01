@@ -943,6 +943,304 @@ def save_itinerary_to_file(filename: str, destination: str = "trip") -> str:
     return f"✅ Saved to: {filepath}"
 ```
 
+### 5. PDF Generation (`utils/pdf_writer.py`)
+
+**Purpose**: Convert markdown itineraries to professionally formatted PDF documents
+
+The PDF generation system handles the conversion of markdown-formatted itineraries into polished PDF files suitable for printing or sharing.
+
+#### Custom PDF Class
+
+```python
+class PDF(FPDF):
+    """Custom PDF class with header/footer"""
+    
+    def header(self):
+        """Add header to each page"""
+        pass  # Minimalist design - no header
+    
+    def footer(self):
+        """Add footer with page number"""
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
+        self.set_text_color(128, 128, 128)
+        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+```
+
+**Design Decisions**:
+- Clean, minimalist design with no header
+- Professional footer with page numbers
+- Centered page numbers in gray italic text
+- Consistent 15mm bottom margin
+
+#### Text Sanitization
+
+**Challenge**: FPDF doesn't support emoji and many Unicode characters
+
+**Solution**: `sanitize_for_pdf()` function
+
+```python
+def sanitize_for_pdf(text: str) -> str:
+    """Remove or replace characters that can't be rendered in PDF."""
+    
+    # Emoji replacement map
+    emoji_map = {
+        '🌍': '[Globe]',
+        '✈️': '[Flight]',
+        '🏨': '[Hotel]',
+        '🍽️': '[Restaurant]',
+        '🎭': '[Theater]',
+        '🏛️': '[Museum]',
+        '⭐': '*',
+        '✅': '[✓]',
+        '💰': '$',
+        '📍': '[Pin]',
+        # ... more mappings
+    }
+    
+    # Replace known emojis
+    for emoji, replacement in emoji_map.items():
+        text = text.replace(emoji, replacement)
+    
+    # Remove remaining unsupported characters
+    text = re.sub(r'[^\x20-\x7E\xA0-\xFF\n\r\t]', '', text)
+    
+    return text
+```
+
+**Sanitization Strategy**:
+
+1. **Explicit Mapping**: Common travel emojis → readable text equivalents
+   - Preserves semantic meaning
+   - Example: `✈️ Flight` → `[Flight] Flight`
+
+2. **Character Filtering**: Remove remaining Unicode outside printable range
+   - Keeps: ASCII (0x20-0x7E) + Extended Latin (0xA0-0xFF)
+   - Preserves: Newlines, tabs, carriage returns
+
+3. **Non-Destructive**: Text remains readable after sanitization
+
+#### Markdown to PDF Conversion
+
+**Main Function**:
+
+```python
+def markdown_to_pdf(markdown_content: str, output_filepath: str) -> None:
+    """Convert markdown content to a styled PDF file."""
+    
+    try:
+        # 1. Sanitize content
+        sanitized_content = sanitize_for_pdf(markdown_content)
+        
+        # 2. Convert markdown to HTML
+        html_content = markdown2.markdown(
+            sanitized_content,
+            extras=[
+                'fenced-code-blocks',
+                'tables',
+                'break-on-newline',
+                'header-ids',
+                'code-friendly'
+            ]
+        )
+        
+        # 3. Create PDF with custom class
+        pdf = PDF()
+        pdf.add_page()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        
+        # 4. Render HTML to PDF
+        pdf.write_html(html_content)
+        
+        # 5. Save to file
+        pdf.output(output_filepath)
+        
+    except Exception as e:
+        raise Exception(f"PDF generation failed: {str(e)}")
+```
+
+**Processing Pipeline**:
+
+```
+Markdown Content
+      ↓
+  Sanitize (remove emojis)
+      ↓
+  Convert to HTML (markdown2)
+      ↓
+  Create PDF instance
+      ↓
+  Render HTML → PDF (fpdf)
+      ↓
+  Save to file
+```
+
+#### Markdown2 Configuration
+
+**Enabled Extras**:
+
+| Extra | Purpose |
+|-------|---------|
+| `fenced-code-blocks` | Support ```code``` blocks |
+| `tables` | Render markdown tables |
+| `break-on-newline` | Preserve line breaks |
+| `header-ids` | Generate heading anchors |
+| `code-friendly` | Better code formatting |
+
+**Why These Extras**:
+- Itineraries use tables for budget breakdowns
+- Headers organize day-by-day sections
+- Line breaks important for readability
+
+#### Integration with Save Agent
+
+The PDF generation integrates with the itinerary saving workflow:
+
+```python
+def save_itinerary_agent(state: TravelState) -> TravelState:
+    """Save itinerary as both markdown and PDF"""
+    
+    destination = state.get("preferences", {}).get("destination", "trip")
+    final_itinerary = state.get("final_itinerary", "")
+    
+    # Generate filename
+    safe_dest = re.sub(r'[^\w\s-]', '', destination).strip().replace(' ', '_')
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    base_filename = f"itinerary_{safe_dest}_{timestamp}"
+    
+    # Save markdown
+    md_filepath = os.path.join("outputs", f"{base_filename}.md")
+    with open(md_filepath, 'w', encoding='utf-8') as f:
+        f.write(final_itinerary)
+    
+    # Save PDF
+    pdf_filepath = os.path.join("outputs", f"{base_filename}.pdf")
+    markdown_to_pdf(final_itinerary, pdf_filepath)
+    
+    print(f"✅ Saved markdown: {md_filepath}")
+    print(f"✅ Saved PDF: {pdf_filepath}")
+    
+    return state
+```
+
+#### Error Handling
+
+**Common Issues and Solutions**:
+
+1. **Unicode Errors**
+   ```python
+   # Problem: Unsupported characters crash PDF generation
+   # Solution: Comprehensive sanitization before conversion
+   sanitized = sanitize_for_pdf(content)
+   ```
+
+2. **Long Text Overflow**
+   ```python
+   # Problem: Text exceeds page boundaries
+   # Solution: Auto page break with proper margins
+   pdf.set_auto_page_break(auto=True, margin=15)
+   ```
+
+3. **HTML Rendering Issues**
+   ```python
+   # Problem: Complex HTML not supported by fpdf
+   # Solution: Use markdown2 extras that generate compatible HTML
+   extras=['fenced-code-blocks', 'tables', 'break-on-newline']
+   ```
+
+#### Output File Organization
+
+**Directory Structure**:
+```
+outputs/
+├── itinerary_Paris_20251101_143022.md
+├── itinerary_Paris_20251101_143022.pdf
+├── itinerary_Tokyo_20251102_091534.md
+└── itinerary_Tokyo_20251102_091534.pdf
+```
+
+**Filename Convention**:
+- Format: `itinerary_{destination}_{timestamp}.{ext}`
+- Timestamp: `YYYYMMDD_HHMMSS`
+- Sanitized destination (no special chars)
+- Both `.md` and `.pdf` versions saved
+
+#### Dependencies
+
+**Required Packages**:
+
+```python
+# requirements.txt
+fpdf2>=2.7.0        # PDF generation library
+markdown2>=2.4.0    # Markdown to HTML conversion
+```
+
+**Why These Libraries**:
+
+- **fpdf2**: Modern, maintained fork of FPDF
+  - Supports `write_html()` for HTML rendering
+  - Good Unicode handling (with sanitization)
+  - Pure Python (no system dependencies)
+
+- **markdown2**: Robust markdown parser
+  - Extensive extras/plugins
+  - Better table support than markdown
+  - Active maintenance
+
+#### PDF Output Features
+
+**Styling**:
+- **Fonts**: Arial (default), supports bold/italic
+- **Headers**: Automatic hierarchy (H1, H2, H3)
+- **Lists**: Bullet points and numbered lists
+- **Tables**: Grid layout with borders
+- **Links**: Clickable URLs (if supported)
+- **Page Numbers**: Bottom center, gray italic
+
+**Limitations**:
+- No emoji support (replaced with text)
+- Limited HTML/CSS support
+- No embedded images (current implementation)
+- Fixed font family
+
+#### Extension Opportunities
+
+**1. Add Cover Page**:
+```python
+def add_cover_page(pdf: PDF, destination: str, dates: str):
+    """Add professional cover page"""
+    pdf.add_page()
+    pdf.set_font('Arial', 'B', 24)
+    pdf.cell(0, 100, f"Travel Itinerary", align='C')
+    pdf.ln(20)
+    pdf.set_font('Arial', '', 18)
+    pdf.cell(0, 10, destination, align='C')
+    pdf.ln(10)
+    pdf.cell(0, 10, dates, align='C')
+```
+
+**2. Add Images**:
+```python
+# Add destination images to PDF
+pdf.image('destination_photo.jpg', x=10, y=50, w=100)
+```
+
+**3. Custom Styling**:
+```python
+# Add custom colors and fonts
+pdf.set_text_color(0, 51, 102)  # Navy blue for headers
+pdf.add_font('CustomFont', '', 'custom.ttf', uni=True)
+```
+
+**4. QR Codes**:
+```python
+# Add QR code with booking links
+import qrcode
+qr = qrcode.make(booking_url)
+qr.save('booking_qr.png')
+pdf.image('booking_qr.png', x=150, y=250, w=30)
+```
+
 ---
 
 ## Feedback Loop Mechanism

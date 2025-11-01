@@ -20,3 +20,7 @@ pillow>=10.0.0
 # Utilities
 typing-extensions>=4.8.0
 
+# PDF generation
+markdown2>=2.4.0
+fpdf2>=2.7.0
+

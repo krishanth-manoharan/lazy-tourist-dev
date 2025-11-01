@@ -3,6 +3,7 @@ from langchain_core.tools import tool
 import os
 from datetime import datetime
 import re
+from utils.pdf_writer import markdown_to_pdf
 
 # Global variable to store current itinerary content
 current_itinerary_content = ""
@@ -28,7 +29,7 @@ def update_itinerary_content(content: str) -> str:
 
 @tool
 def save_itinerary_to_file(filename: str, destination: str = "trip") -> str:
-    """Save the current itinerary content to a file in the outputs directory.
+    """Save the current itinerary content to a PDF file in the outputs directory.
     
     Args:
         filename: Optional custom filename (without extension)
@@ -50,17 +51,17 @@ def save_itinerary_to_file(filename: str, destination: str = "trip") -> str:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"itinerary_{safe_destination}_{timestamp}"
     
-    # Ensure .md extension
-    if not filename.endswith('.md'):
-        filename += '.md'
+    # Ensure .pdf extension
+    if not filename.endswith('.pdf'):
+        filename += '.pdf'
     
     # Full path
     filepath = os.path.join(outputs_dir, filename)
     
-    # Save the file
+    # Save the file as PDF
     try:
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(current_itinerary_content)
+        # Use the PDF writer utility to convert markdown to PDF
+        markdown_to_pdf(current_itinerary_content, filepath)
         return f"✅ Itinerary saved successfully to: {filepath}"
     except Exception as e:
         return f"❌ Error saving itinerary: {str(e)}"
