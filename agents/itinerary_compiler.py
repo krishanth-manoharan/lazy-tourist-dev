@@ -164,72 +164,72 @@ def format_final_itinerary(state: TravelState) -> TravelState:
     dest_info = state.get("destination_info", {})
     
     markdown = f"""# 🌍 Your Personalized Travel Itinerary
-## {prefs.get('destination', 'Destination')} Adventure
+    ## {prefs.get('destination', 'Destination')} Adventure
 
----
+    ---
 
-## 📋 Trip Overview
+    ## 📋 Trip Overview
 
-**Destination:** {prefs.get('destination', 'N/A')}  
-**Dates:** {prefs.get('departure_date', 'N/A')} to {prefs.get('return_date', 'N/A')}  
-**Duration:** {prefs.get('duration_days', 0)} days  
-**Travelers:** {prefs.get('num_adults', 0)} adults, {prefs.get('num_children', 0)} children  
-**Budget:** ${prefs.get('budget', 0)}
+    **Destination:** {prefs.get('destination', 'N/A')}  
+    **Dates:** {prefs.get('departure_date', 'N/A')} to {prefs.get('return_date', 'N/A')}  
+    **Duration:** {prefs.get('duration_days', 0)} days  
+    **Travelers:** {prefs.get('num_adults', 0)} adults, {prefs.get('num_children', 0)} children  
+    **Budget:** ${prefs.get('budget', 0)}
 
----
+    ---
 
-## ✈️ Flight Details
+    ## ✈️ Flight Details
 
-**Outbound Flight:**  
-- **Airline:** {selected_flight.get('airline', 'N/A')} {selected_flight.get('flight_number', '')}  
-- **Route:** {selected_flight.get('departure', 'N/A')} → {selected_flight.get('arrival', 'N/A')}  
-- **Departure:** {selected_flight.get('departure_time', 'N/A')} on {prefs.get('departure_date', 'N/A')}  
-- **Arrival:** {selected_flight.get('arrival_time', 'N/A')}  
-- **Duration:** {selected_flight.get('duration', 'N/A')}  
-- **Stops:** {selected_flight.get('stops', 0)}  
-- **Price:** ${selected_flight.get('total_price', 0)} (${selected_flight.get('price_per_person', 0)}/person)
+    **Outbound Flight:**  
+    - **Airline:** {selected_flight.get('airline', 'N/A')} {selected_flight.get('flight_number', '')}  
+    - **Route:** {selected_flight.get('departure', 'N/A')} → {selected_flight.get('arrival', 'N/A')}  
+    - **Departure:** {selected_flight.get('departure_time', 'N/A')} on {prefs.get('departure_date', 'N/A')}  
+    - **Arrival:** {selected_flight.get('arrival_time', 'N/A')}  
+    - **Duration:** {selected_flight.get('duration', 'N/A')}  
+    - **Stops:** {selected_flight.get('stops', 0)}  
+    - **Price:** ${selected_flight.get('total_price', 0)} (${selected_flight.get('price_per_person', 0)}/person)
 
-**Return Flight:**  
-- **Airline:** {selected_return_flight.get('airline', 'N/A')} {selected_return_flight.get('flight_number', '')}  
-- **Route:** {selected_return_flight.get('departure', 'N/A')} → {selected_return_flight.get('arrival', 'N/A')}  
-- **Departure:** {selected_return_flight.get('departure_time', 'N/A')} on {prefs.get('return_date', 'N/A')}  
-- **Arrival:** {selected_return_flight.get('arrival_time', 'N/A')}  
-- **Duration:** {selected_return_flight.get('duration', 'N/A')}  
-- **Stops:** {selected_return_flight.get('stops', 0)}  
-- **Price:** ${selected_return_flight.get('total_price', 0)} (${selected_return_flight.get('price_per_person', 0)}/person)
+    **Return Flight:**  
+    - **Airline:** {selected_return_flight.get('airline', 'N/A')} {selected_return_flight.get('flight_number', '')}  
+    - **Route:** {selected_return_flight.get('departure', 'N/A')} → {selected_return_flight.get('arrival', 'N/A')}  
+    - **Departure:** {selected_return_flight.get('departure_time', 'N/A')} on {prefs.get('return_date', 'N/A')}  
+    - **Arrival:** {selected_return_flight.get('arrival_time', 'N/A')}  
+    - **Duration:** {selected_return_flight.get('duration', 'N/A')}  
+    - **Stops:** {selected_return_flight.get('stops', 0)}  
+    - **Price:** ${selected_return_flight.get('total_price', 0)} (${selected_return_flight.get('price_per_person', 0)}/person)
 
-**Total Flight Cost:** ${selected_flight.get('total_price', 0) + selected_return_flight.get('total_price', 0)}
+    **Total Flight Cost:** ${selected_flight.get('total_price', 0) + selected_return_flight.get('total_price', 0)}
 
----
+    ---
 
-## 🏨 Accommodation
+    ## 🏨 Accommodation
 
-**Hotel:** {selected_hotel.get('name', 'N/A')}  
-**Rating:** {selected_hotel.get('stars', 0)}⭐ ({selected_hotel.get('rating', 0)}/5.0 - {selected_hotel.get('reviews', 0)} reviews)  
-**Location:** {selected_hotel.get('location', 'N/A')} - {selected_hotel.get('distance_to_center', 'N/A')}  
-**Price:** ${selected_hotel.get('price_per_night', 0)}/night × {selected_hotel.get('nights', 0)} nights = ${selected_hotel.get('total_price', 0)}
+    **Hotel:** {selected_hotel.get('name', 'N/A')}  
+    **Rating:** {selected_hotel.get('stars', 0)}⭐ ({selected_hotel.get('rating', 0)}/5.0 - {selected_hotel.get('reviews', 0)} reviews)  
+    **Location:** {selected_hotel.get('location', 'N/A')} - {selected_hotel.get('distance_to_center', 'N/A')}  
+    **Price:** ${selected_hotel.get('price_per_night', 0)}/night × {selected_hotel.get('nights', 0)} nights = ${selected_hotel.get('total_price', 0)}
 
-**Amenities:**  
-"""
+    **Amenities:**  
+    """
     
     for amenity in selected_hotel.get('amenities', []):
         markdown += f"- {amenity}\n"
     
     markdown += f"""
----
+    ---
 
-## 📅 Day-by-Day Itinerary
+    ## 📅 Day-by-Day Itinerary
 
-"""
+    """
     
     for day_plan in daily_itinerary:
         markdown += f"""### Day {day_plan['day']} - {day_plan['date']}
-*{day_plan['notes']}*
+    *{day_plan['notes']}*
 
-"""
+    """
         for activity in day_plan.get('activities', []):
             markdown += f"""**{activity.get('name', 'Activity')}**  
-"""
+    """
             if activity.get('category'):
                 markdown += f"- Category: {activity['category']}\n"
             if activity.get('duration'):
@@ -250,18 +250,18 @@ def format_final_itinerary(state: TravelState) -> TravelState:
     
     markdown += f"""## 💰 Budget Breakdown
 
-| Category | Cost |
-|----------|------|
-| Flights | ${budget.get('flights', 0)} |
-| Accommodation | ${budget.get('accommodation', 0)} |
-| Activities | ${budget.get('activities', 0)} |
-| Meals (estimated) | ${budget.get('meals', 0)} |
-| Local Transportation | ${budget.get('transportation', 0)} |
-| Miscellaneous | ${budget.get('miscellaneous', 0)} |
-| **TOTAL** | **${budget.get('total', 0)}** |
+    | Category | Cost |
+    |----------|------|
+    | Flights | ${budget.get('flights', 0)} |
+    | Accommodation | ${budget.get('accommodation', 0)} |
+    | Activities | ${budget.get('activities', 0)} |
+    | Meals (estimated) | ${budget.get('meals', 0)} |
+    | Local Transportation | ${budget.get('transportation', 0)} |
+    | Miscellaneous | ${budget.get('miscellaneous', 0)} |
+    | **TOTAL** | **${budget.get('total', 0)}** |
 
-**Your Budget:** ${prefs.get('budget', 0)}  
-"""
+    **Your Budget:** ${prefs.get('budget', 0)}  
+    """
     
     remaining = budget.get('remaining', 0)
     if remaining >= 0:
@@ -272,11 +272,11 @@ def format_final_itinerary(state: TravelState) -> TravelState:
     # Add destination tips
     if dest_info:
         markdown += f"""
----
+        ---
 
-## 🌟 Destination Tips
+        ## 🌟 Destination Tips
 
-"""
+        """
         if dest_info.get('best_time_to_visit'):
             markdown += f"**Best Time to Visit:** {dest_info['best_time_to_visit']}\n\n"
         
@@ -310,13 +310,13 @@ def format_final_itinerary(state: TravelState) -> TravelState:
             markdown += f"**Emergency Numbers:** {dest_info['emergency_numbers']}\n\n"
     
     markdown += """
----
+    ---
 
-## 🎉 Have a Wonderful Trip!
+    ## 🎉 Have a Wonderful Trip!
 
-*This itinerary was created by your AI Travel Planning Agent*  
-*All prices are estimates and should be verified at time of booking*
-"""
+    *This itinerary was created by your AI Travel Planning Agent*  
+    *All prices are estimates and should be verified at time of booking*
+    """
     
     state["final_itinerary"] = markdown
     

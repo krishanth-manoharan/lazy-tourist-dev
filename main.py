@@ -111,7 +111,7 @@ def run_travel_agent(show_graph: bool = False):
         "iteration_count": 0,
         "user_satisfied": False,
         "feedback_message": "",
-        "conversation_history": []
+        "conversation_history": [f"User: {user_query}"]  # Include initial query in history
     }
     
     # Run the agent
@@ -120,13 +120,58 @@ def run_travel_agent(show_graph: bool = False):
         print("🎬 STARTING TRAVEL PLANNING...")
         print("="*60)
         
-        # Stream the graph execution
-        for step_output in app.stream(initial_state):
-            # The stream yields state updates
-            if isinstance(step_output, dict):
-                # Check if we've reached the end
-                if "__end__" in step_output:
+        current_state = initial_state
+        max_iterations = 10  # Prevent infinite loops
+        iteration = 0
+        
+        # Loop until we reach the end or max iterations
+        while iteration < max_iterations:
+            iteration += 1
+            needs_input = False
+            
+            # Stream the graph execution
+            for step_output in app.stream(current_state):
+                # The stream yields state updates
+                if isinstance(step_output, dict):
+                    # Check if we've reached the end
+                    if "__end__" in step_output:
+                        print("\n" + "="*60)
+                        print("✅ TRAVEL PLANNING COMPLETE!")
+                        print("="*60)
+                        return
+                    
+                    # Check if any step needs user input
+                    for node_name, node_state in step_output.items():
+                        if node_name == "extract_intent":
+                            if node_state.get("needs_user_input"):
+                                # Display the LLM's question
+                                feedback_msg = node_state.get("feedback_message", "")
+                                if feedback_msg:
+                                    print(f"\n{feedback_msg}")
+                                
+                                # Get user's response
+                                user_response = input("\n💬 Your response: ").strip()
+                                
+                                # Update conversation history with the exchange
+                                conversation_history = node_state.get("conversation_history", [])
+                                conversation_history.append(f"Assistant: {feedback_msg}")
+                                conversation_history.append(f"User: {user_response}")
+                                
+                                # Update state - keep original user_query, rely on conversation_history for context
+                                current_state = node_state
+                                current_state["conversation_history"] = conversation_history
+                                current_state["needs_user_input"] = False
+                                # Note: NOT updating user_query - it stays as the original query
+                                
+                                needs_input = True
+                                break
+                
+                if needs_input:
                     break
+            
+            # If we didn't need input, we're done
+            if not needs_input:
+                break
         
         print("\n" + "="*60)
         print("✅ TRAVEL PLANNING COMPLETE!")

@@ -32,7 +32,16 @@ def create_travel_agent_graph():
     graph.add_node("refine_itinerary", refine_itinerary_agent)
     graph.add_node("save_and_exit", save_itinerary_agent)
     
-    # Define routing function
+    # Define routing functions
+    def route_after_intent(state: TravelState) -> str:
+        """Route after intent extraction - check if we need more info"""
+        next_step = state.get("next_step", "research_destination")
+        
+        if next_step == "collect_more_info":
+            return "extract_intent"  # Loop back to collect more info
+        else:
+            return "research_destination"
+    
     def route_after_feedback(state: TravelState) -> str:
         """Route based on user feedback"""
         next_step = state.get("next_step", "get_feedback")
@@ -58,9 +67,20 @@ def create_travel_agent_graph():
             return "compile_itinerary"
     
     # Build the graph
-    # Initial flow: intent -> research -> search -> compile -> format -> feedback
+    # Initial flow: intent -> (loop back to itself or proceed to research_destination)
     graph.add_edge(START, "extract_intent")
-    graph.add_edge("extract_intent", "research_destination")
+    
+    # Conditional routing after intent extraction
+    graph.add_conditional_edges(
+        "extract_intent",
+        route_after_intent,
+        {
+            "extract_intent": "extract_intent",       # Loop back to collect more info
+            "research_destination": "research_destination"  # All info present
+        }
+    )
+    
+    # Continue with normal flow
     graph.add_edge("research_destination", "search_flights")
     graph.add_edge("search_flights", "search_hotels")
     graph.add_edge("search_hotels", "search_activities")

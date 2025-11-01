@@ -75,52 +75,52 @@ def refine_itinerary_agent(state: TravelState) -> TravelState:
     
     system_prompt = """You are a travel planning assistant helping to refine an itinerary based on user feedback.
 
-The user has provided feedback about their current itinerary. Your job is to:
-1. Understand what they want to change
-2. Extract any updated preferences (budget, duration, interests, etc.)
-3. Suggest specific modifications
-4. Update the relevant parts of the itinerary
+    The user has provided feedback about their current itinerary. Your job is to:
+    1. Understand what they want to change
+    2. Extract any updated preferences (budget, duration, interests, etc.)
+    3. Suggest specific modifications
+    4. Update the relevant parts of the itinerary
 
-Be helpful and conversational. If the request is:
-- About budget: Extract the new budget amount and suggest cheaper/more expensive alternatives
-- About duration: Extract the new duration and adjust the itinerary
-- About activities: Add more of the requested type or change existing ones
-- About hotels: Suggest different accommodations
-- About flights: Mention alternative options
-- Unclear: Ask clarifying questions
+    Be helpful and conversational. If the request is:
+    - About budget: Extract the new budget amount and suggest cheaper/more expensive alternatives
+    - About duration: Extract the new duration and adjust the itinerary
+    - About activities: Add more of the requested type or change existing ones
+    - About hotels: Suggest different accommodations
+    - About flights: Mention alternative options
+    - Unclear: Ask clarifying questions
 
-Return a JSON object with:
-{
-    "changes_needed": ["list of specific changes to make"],
-    "requires_new_search": false,  // true if need to search flights/hotels again
-    "clarifying_question": null,  // or a question if feedback is unclear
-    "updated_summary": "Brief summary of what will change",
-    "updated_preferences": {  // any preference changes extracted from feedback
-        "budget": null,  // new budget if mentioned
-        "duration_days": null,  // new duration if mentioned
-        "interests": null,  // updated interests if mentioned (full list)
-        "min_hotel_stars": null,  // updated hotel preference
-        "num_adults": null,  // updated number of adults
-        "num_children": null  // updated number of children
+    Return a JSON object with:
+    {
+        "changes_needed": ["list of specific changes to make"],
+        "requires_new_search": false,  // true if need to search flights/hotels again
+        "clarifying_question": null,  // or a question if feedback is unclear
+        "updated_summary": "Brief summary of what will change",
+        "updated_preferences": {  // any preference changes extracted from feedback
+            "budget": null,  // new budget if mentioned
+            "duration_days": null,  // new duration if mentioned
+            "interests": null,  // updated interests if mentioned (full list)
+            "min_hotel_stars": null,  // updated hotel preference
+            "num_adults": null,  // updated number of adults
+            "num_children": null  // updated number of children
+        }
     }
-}
 
-Only include fields in updated_preferences that the user actually wants to change.
-"""
+    Only include fields in updated_preferences that the user actually wants to change.
+    """
     
     user_message = f"""
-Current itinerary summary:
-- Destination: {prefs.get('destination', 'N/A')}
-- Budget: ${prefs.get('budget', 0)}
-- Duration: {prefs.get('duration_days', 0)} days
-- Travelers: {prefs.get('num_adults', 2)} adults, {prefs.get('num_children', 0)} children
-- Interests: {', '.join(prefs.get('interests', []))}
-- Hotel preference: {prefs.get('min_hotel_stars', 3)}+ stars
+    Current itinerary summary:
+    - Destination: {prefs.get('destination', 'N/A')}
+    - Budget: ${prefs.get('budget', 0)}
+    - Duration: {prefs.get('duration_days', 0)} days
+    - Travelers: {prefs.get('num_adults', 2)} adults, {prefs.get('num_children', 0)} children
+    - Interests: {', '.join(prefs.get('interests', []))}
+    - Hotel preference: {prefs.get('min_hotel_stars', 3)}+ stars
 
-User feedback: "{feedback}"
+    User feedback: "{feedback}"
 
-What changes should be made to address this feedback? Extract any updated preference values.
-"""
+    What changes should be made to address this feedback? Extract any updated preference values.
+    """
     
     messages = [
         SystemMessage(content=system_prompt),
