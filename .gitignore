@@ -55,3 +55,7 @@ travel_agent_graph.*
 .coverage
 htmlcov/
 
+# Streamlit
+.streamlit/
+*.pyc
+

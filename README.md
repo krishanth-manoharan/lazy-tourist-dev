@@ -4,15 +4,17 @@ An interactive, multi-agent travel planning system that creates personalized, en
 
 ## 🎯 Features
 
-- **Interactive Conversation**: Describe your trip, review results, and request changes in natural dialogue
-- **Iterative Refinement**: Perfect your itinerary through multiple rounds of feedback
-- **Natural Language Understanding**: Describe your trip in plain English
-- **Multi-Agent Architecture**: Specialized agents for different aspects of trip planning
-- **Real-time Data**: Mocked flight, hotel, and activity APIs (ready for real API integration)
-- **Comprehensive Itineraries**: Day-by-day plans with flights, hotels, and activities
-- **Budget Tracking**: Automatic budget breakdown and optimization
-- **Destination Intelligence**: Visa requirements, safety tips, local customs, and more
-- **Beautiful Output**: Markdown-formatted itineraries you can save and share
+- **🎨 Beautiful Web UI**: Modern Streamlit interface with chat-like conversation
+- **💬 Interactive Conversation**: Describe your trip, review results, and request changes in natural dialogue
+- **🔄 Iterative Refinement**: Perfect your itinerary through multiple rounds of feedback
+- **🗣️ Natural Language Understanding**: Describe your trip in plain English
+- **🤖 Multi-Agent Architecture**: Specialized agents for different aspects of trip planning
+- **📊 Real-time Preview**: See your itinerary update in real-time as you chat
+- **🌐 Real-time Data**: Mocked flight, hotel, and activity APIs (ready for real API integration)
+- **📅 Comprehensive Itineraries**: Day-by-day plans with flights, hotels, and activities
+- **💰 Budget Tracking**: Automatic budget breakdown and optimization
+- **📍 Destination Intelligence**: Visa requirements, safety tips, local customs, and more
+- **📥 Beautiful Output**: Markdown-formatted itineraries you can download and share
 
 ## 🏗️ Architecture
 
@@ -73,7 +75,8 @@ Format Output → GET FEEDBACK
 
 ```
 lazy-tourist/
-├── main.py                      # Main application entry point
+├── streamlit_app.py             # Streamlit Web UI (recommended)
+├── main.py                      # Command-line interface
 ├── graph.py                     # LangGraph orchestration with feedback loop
 ├── requirements.txt             # Python dependencies
 ├── README.md                    # This file
@@ -128,18 +131,27 @@ OPENAI_API_KEY=your-openai-api-key-here
 
 ### 3. Run the Agent
 
-**Interactive Mode**:
+**🎨 Streamlit Web UI (Recommended)**:
 ```bash
+streamlit run streamlit_app.py
+```
+
+This will open a beautiful web interface in your browser at `http://localhost:8501` with:
+- Chat-like conversation interface
+- Real-time itinerary preview
+- Trip details sidebar
+- Example queries to get started quickly
+- Download itinerary as Markdown
+
+**💻 Command Line Interface**:
+```bash
+# Interactive Mode
 python main.py
-```
 
-**With Graph Visualization**:
-```bash
+# With Graph Visualization
 python main.py --show-graph
-```
 
-**Show Help Guide**:
-```bash
+# Show Help Guide
 python main.py --help-guide
 ```
 
@@ -317,6 +329,25 @@ The agent generates detailed markdown itineraries like:
 - **langchain-openai**: OpenAI integration
 - **python-dotenv**: Environment variable management
 
+## 🎨 Streamlit Web UI
+
+The project includes a beautiful Streamlit web interface with:
+
+### Key Features
+- **💬 Chat Interface**: Natural conversation with the AI
+- **📄 Live Preview**: Real-time itinerary updates
+- **📊 Trip Dashboard**: Sidebar with current trip details
+- **💡 Example Queries**: Quick-start buttons for common requests
+- **📥 Download**: Export itinerary as Markdown
+- **🔄 Reset**: Start new planning sessions easily
+
+### Quick Start
+```bash
+streamlit run streamlit_app.py
+```
+
+See [STREAMLIT_GUIDE.md](STREAMLIT_GUIDE.md) for detailed usage instructions.
+
 ## 🤝 Contributing
 
 This is a demonstration project. To extend it:
@@ -327,6 +358,7 @@ This is a demonstration project. To extend it:
 4. Enhance the feedback loop with more sophisticated preference updates
 5. Add support for multi-city trips
 6. Implement conversation memory across sessions
+7. Enhance the Streamlit UI with more visualization features
 
 ## 📄 License
 

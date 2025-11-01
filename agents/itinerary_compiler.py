@@ -189,6 +189,7 @@ def format_final_itinerary(state: TravelState) -> TravelState:
     - Place the placeholder on a new line right after the activity description
     - Only include placeholders for actual activities (not for travel days like "Airport Transfer")
     - The placeholder will be automatically replaced with a generated image in the PDF output
+    - Do not include placeholder for checking in and out of the hotel activity!!!!
     
     Example format:
     ### Day 2: Exploration Day
@@ -253,7 +254,7 @@ def format_final_itinerary(state: TravelState) -> TravelState:
     - Include placeholders ONLY for actual tourist activities (not for travel/transfer activities like "Airport Transfer" or "Hotel Check-out")
     - Example: After describing "Eiffel Tower Visit" activity, add: [IMAGE_PLACEHOLDER:Eiffel Tower Visit]
     - Make sure every real activity has its placeholder - this is essential for PDF generation
-    - Do not include placeholder for checking in and out of the hotel
+    - Do not include placeholder for checking in and out of the hotel!!!!
 
     Return ONLY the markdown content, no additional text or explanation."""
     

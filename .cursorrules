@@ -9,6 +9,7 @@ Multi-agent travel planning system using LangGraph and GPT-4o-mini. Creates pers
 - **LLM**: OpenAI GPT-4o-mini via langchain-openai
 - **Language**: Python 3.11+
 - **State**: TypedDict with type annotations
+- **UI**: Streamlit 1.28+ for web interface
 
 ## Code Style
 
@@ -59,6 +60,9 @@ format_output → get_feedback → [refine loop or save]
 - Decision: re-search vs just recompile
 
 ## File Organization
+- `streamlit_app.py` - Streamlit web UI (recommended interface)
+- `main.py` - Command-line interface
+- `graph.py` - LangGraph orchestration
 - `agents/` - Agent implementations
 - `tools/` - LangChain tool definitions
 - `mocks/` - Mock data (flights, hotels, activities)
@@ -66,6 +70,19 @@ format_output → get_feedback → [refine loop or save]
 - `utils/` - API client, PDF generation, and utilities
 - `tests/` - Test suite
 - `outputs/` - Generated itineraries
+
+## Running the Application
+
+### Web UI (Recommended)
+```bash
+streamlit run streamlit_app.py
+```
+Opens browser at http://localhost:8501 with chat interface.
+
+### Command Line
+```bash
+python main.py
+```
 
 ## Testing
 Run unified test suite: `python tests/test_agent.py [basic|refine|missing|partial]`
@@ -125,8 +142,18 @@ except Exception as e:
 - Handle parsing errors gracefully
 - Use SystemMessage + HumanMessage pattern
 
+## Streamlit UI Guidelines
+- Use `st.session_state` for persisting data across reruns
+- Call `st.rerun()` after state changes that need UI updates
+- Use `st.spinner()` for long-running operations
+- Organize layout with columns: `col1, col2 = st.columns([2, 1])`
+- Use custom CSS with `st.markdown()` for styling
+- Handle user input with `st.form()` to prevent repeated submissions
+- Display messages with consistent formatting (user/assistant/system)
+- Integrate with LangGraph using checkpointing and streaming
+
 ## Important
-- After any change, make sure the change is updated properly in IMPLEMENTATION.MD and README.md
+- After any change, make sure the change is updated properly in README.md and STREAMLIT_GUIDE.md
 
 ## Don't
 - Don't mutate state directly

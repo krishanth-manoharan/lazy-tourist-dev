@@ -25,3 +25,6 @@ requests>=2.31.0
 markdown2>=2.4.0
 fpdf2>=2.7.0
 
+# Web UI
+streamlit>=1.28.0
+
