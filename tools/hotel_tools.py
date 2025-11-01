@@ -1,8 +1,10 @@
-"""Hotel search tools with mocked API responses"""
+"""Hotel search tools using external APIs"""
 from langchain_core.tools import tool
 from typing import Dict, List
 import json
-from mocks.hotel_data import MOCK_HOTELS
+from mocks.hotel_data import MOCK_HOTELS  # Note: Mocks kept for reference but not used (API is primary source)
+from data.apis import HOTELS_API
+from utils.api_client import fetch_api_data
 
 @tool
 def search_hotels(destination: str, check_in: str, check_out: str, guests: int = 2, 
@@ -25,23 +27,44 @@ def search_hotels(destination: str, check_in: str, check_out: str, guests: int =
     # Normalize destination
     dest_key = destination.upper()
     
-    # Find matching hotels - try partial matching
-    hotels = None
-    for key in MOCK_HOTELS.keys():
-        if key == "DEFAULT":
-            continue
-        if key in dest_key or dest_key in key:
-            hotels = MOCK_HOTELS[key]
-            break
-    
-    # Use default if no match
-    if not hotels:
-        hotels = MOCK_HOTELS["DEFAULT"]
+    # Fetch from external API
+    try:
+        api_response = fetch_api_data(url=HOTELS_API)
+        # API returns destination-based structure: {"PARIS": [...], "BALI": [...], ...}
+        hotels = None
+        
+        # Find matching hotels - try partial matching
+        for key in api_response.keys():
+            if key == "DEFAULT":
+                continue
+            if key in dest_key or dest_key in key:
+                hotels = api_response[key]
+                break
+        
+        # Use default if no match
+        if not hotels and "DEFAULT" in api_response:
+            hotels = api_response["DEFAULT"]
+        
+        if not hotels:
+            hotels = []
+            
+    except Exception as e:
+        print(f"❌ Failed to fetch hotels from API: {str(e)}")
+        return json.dumps({
+            "search_params": {
+                "destination": destination,
+                "check_in": check_in,
+                "check_out": check_out,
+                "guests": guests
+            },
+            "hotels": [],
+            "message": f"Error fetching hotels: {str(e)}"
+        })
     
     # Filter by criteria
     filtered_hotels = [
         h for h in hotels 
-        if h["stars"] >= min_stars and h["price_per_night"] <= max_price_per_night
+        if h.get("stars", 0) >= min_stars and h.get("price_per_night", float('inf')) <= max_price_per_night
     ]
     
     # Calculate nights and total
@@ -68,7 +91,7 @@ def search_hotels(destination: str, check_in: str, check_out: str, guests: int =
         for hotel in filtered_hotels[:4]:  # Return top 4 options
             hotel_copy = hotel.copy()
             hotel_copy["nights"] = nights
-            hotel_copy["total_price"] = hotel["price_per_night"] * nights
+            hotel_copy["total_price"] = hotel.get("price_per_night", 0) * nights
             result["hotels"].append(hotel_copy)
     
     return json.dumps(result)

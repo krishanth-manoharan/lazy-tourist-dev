@@ -2,8 +2,6 @@
 from dotenv import load_dotenv
 from graph import create_travel_agent_graph, visualize_graph
 from agents.state import TravelState
-import sys
-import os
 
 # Load environment variables
 load_dotenv()
