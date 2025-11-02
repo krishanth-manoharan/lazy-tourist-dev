@@ -53,31 +53,31 @@ def user_feedback_agent(state: TravelState) -> TravelState:
     
     system_prompt = """You are a travel planning assistant analyzing user feedback.
 
-Your job is to determine the user's intent and decide what action to take:
+    Your job is to determine the user's intent and decide what action to take:
 
-1. **CLARIFY**: If the user is asking a basic clarification question that doesn't require itinerary changes
-   - Questions about the trip, destination, weather, culture, etc.
-   - General information requests
-   - Simple "what" or "how" questions that can be answered directly
+    1. **CLARIFY**: If the user is asking a basic clarification question that doesn't require itinerary changes
+    - Questions about the trip, destination, weather, culture, etc.
+    - General information requests
+    - Simple "what" or "how" questions that can be answered directly
 
-2. **REFINE**: If the user wants to modify or change the itinerary
-   - Requests to add/remove activities
-   - Changes to hotels, flights, budget
-   - Modifications to dates, duration, or preferences
-   - Any request that requires updating the itinerary
+    2. **REFINE**: If the user wants to modify or change the itinerary
+    - Requests to add/remove activities
+    - Changes to hotels, flights, budget
+    - Modifications to dates, duration, or preferences
+    - Any request that requires updating the itinerary
 
-3. **SAVE**: If the user is satisfied and wants to save/finish
-   - Expressions of satisfaction ("looks good", "perfect", "save", etc.)
-   - Confirmation they're happy with the itinerary
-   - Requests to finish or exit
+    3. **SAVE**: If the user is satisfied and wants to save/finish
+    - Expressions of satisfaction ("looks good", "perfect", "save", etc.)
+    - Confirmation they're happy with the itinerary
+    - Requests to finish or exit
 
-Return a JSON object with:
-{
-    "action": "clarify" | "refine" | "save",
-    "reasoning": "Brief explanation of why this action was chosen",
-    "response": "If action is 'clarify', provide a helpful response to the user's question. If action is 'refine', provide a brief acknowledgment. If action is 'save', provide a confirmation message."
-}
-"""
+    Return a JSON object with:
+    {
+        "action": "clarify" | "refine" | "save",
+        "reasoning": "Brief explanation of why this action was chosen",
+        "response": "If action is 'clarify', provide a helpful response to the user's question. If action is 'refine', provide a brief acknowledgment. If action is 'save', provide a confirmation message."
+    }
+    """
     
     current_itinerary = state.get("final_itinerary", "")
     prefs = state.get("preferences", {})
@@ -91,16 +91,16 @@ Return a JSON object with:
             conversation_context = "\n\nPrevious conversation:\n" + "\n".join(history_for_prompt[-6:])  # Last 3 exchanges (6 messages)
     
     user_message = f"""
-Current itinerary context:
-- Destination: {prefs.get('destination', 'N/A')}
-- Duration: {prefs.get('duration_days', 'N/A')} days
-- Budget: ${prefs.get('budget', 'N/A')}
-{conversation_context}
+    Current itinerary context:
+    - Destination: {prefs.get('destination', 'N/A')}
+    - Duration: {prefs.get('duration_days', 'N/A')} days
+    - Budget: ${prefs.get('budget', 'N/A')}
+    {conversation_context}
 
-Current user feedback: "{user_feedback}"
+    Current user feedback: "{user_feedback}"
 
-What action should be taken? Analyze if this is a clarification question, a refinement request, or a save request.
-"""
+    What action should be taken? Analyze if this is a clarification question, a refinement request, or a save request.
+    """
     
     messages = [
         SystemMessage(content=system_prompt),
@@ -313,8 +313,8 @@ def refine_itinerary_agent(state: TravelState) -> TravelState:
             state["next_step"] = "search_flights"
             print("\n🔍 Will perform new searches based on your requirements...")
         else:
-            # Otherwise, just recompile itinerary with modifications
-            state["next_step"] = "compile_itinerary"
+            # Otherwise, go to format_output to regenerate document with user's feedback
+            state["next_step"] = "format_output"
             print("\n📋 Updating your itinerary...")
         
     except json.JSONDecodeError:
@@ -322,7 +322,7 @@ def refine_itinerary_agent(state: TravelState) -> TravelState:
         print(f"\n⚠️  Could not parse refinement response, proceeding with basic updates...")
         print(f"💭 I understand you want: {feedback}")
         print("Let me regenerate the itinerary with your preferences in mind...")
-        state["next_step"] = "compile_itinerary"
+        state["next_step"] = "format_output"
     
     return state
 

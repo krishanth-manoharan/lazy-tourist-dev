@@ -182,6 +182,11 @@ def format_final_itinerary(state: TravelState) -> TravelState:
     Include all the information provided - don't omit any details.
     Make it engaging and travel-friendly.
     
+    IMPORTANT - USER FEEDBACK:
+    If user feedback is provided, pay special attention to the user's request and modify the document accordingly.
+    The user's feedback indicates what they want to change or emphasize in the itinerary.
+    Adjust the content, tone, or structure to address their specific needs while maintaining the overall format.
+    
     CRITICAL - IMAGE PLACEHOLDERS FOR ACTIVITIES:
     - For EACH activity in the Day-by-Day Itinerary, insert an image placeholder immediately below the activity description
     - Use the exact format: [IMAGE_PLACEHOLDER:activity_name]
@@ -210,6 +215,16 @@ def format_final_itinerary(state: TravelState) -> TravelState:
         "destination_info": dest_info
     }
     
+    # Check if there's user feedback to consider
+    feedback = state.get("feedback_message", "")
+    feedback_section = ""
+    if feedback:
+        feedback_section = f"""
+    USER FEEDBACK/REQUEST:
+    The user has requested: "{feedback}"
+    IMPORTANT: Pay special attention to this feedback and adjust the document accordingly to address their specific request.
+    """
+    
     user_message = f"""Create a beautiful markdown itinerary document using the following travel data:
 
     TRIP PREFERENCES:
@@ -219,7 +234,7 @@ def format_final_itinerary(state: TravelState) -> TravelState:
     - Travelers: {prefs.get('num_adults', 0)} adults, {prefs.get('num_children', 0)} children
     - Budget: ${prefs.get('budget', 0)}
     - Interests: {', '.join(prefs.get('interests', []))}
-
+    {feedback_section}
     OUTBOUND FLIGHT:
     {json.dumps(selected_flight, indent=2) if selected_flight else "No outbound flight selected"}
 
@@ -281,6 +296,10 @@ def format_final_itinerary(state: TravelState) -> TravelState:
     
     # Store in global itinerary content for tools to access
     set_itinerary_content(markdown)
+    
+    # Clear the feedback message after it's been processed
+    if state.get("feedback_message"):
+        state["feedback_message"] = ""
     
     print("\n✅ Markdown generated successfully!")
     

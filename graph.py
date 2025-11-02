@@ -68,11 +68,14 @@ def create_travel_agent_graph():
     
     def route_after_refinement(state: TravelState) -> str:
         """Route after refinement decision"""
-        next_step = state.get("next_step", "compile_itinerary")
+        next_step = state.get("next_step", "format_output")
         
         if next_step == "search_flights":
             return "search_flights"
+        elif next_step == "format_output":
+            return "format_output"
         else:
+            # Fallback to compile_itinerary for backward compatibility
             return "compile_itinerary"
     
     # Build the graph
@@ -112,14 +115,15 @@ def create_travel_agent_graph():
         }
     )
     
-    # After refinement, decide whether to re-search or just recompile
-    # Both paths eventually return to get_feedback (which shows updated itinerary by default)
+    # After refinement, decide whether to re-search, recompile, or just reformat
+    # All paths eventually return to get_feedback (which shows updated itinerary by default)
     graph.add_conditional_edges(
         "refine_itinerary",
         route_after_refinement,
         {
             "search_flights": "search_flights",      # Re-do searches (flows: flights->hotels->activities->compile->format->feedback)
-            "compile_itinerary": "compile_itinerary"  # Just recompile (flows: compile->format->feedback)
+            "compile_itinerary": "compile_itinerary",  # Recompile (flows: compile->format->feedback)
+            "format_output": "format_output"          # Just reformat with user feedback (flows: format->feedback)
         }
     )
     
