@@ -152,49 +152,52 @@ st.markdown("""
         color: #e0e0e0;
     }
     
-    /* Full-screen itinerary */
-    .fullscreen-itinerary {
+    /* Itinerary main view */
+    .itinerary-main {
         background-color: #0e1117;
-        padding: 2rem;
+        padding: 1.5rem;
         border-radius: 12px;
-        margin-top: 1rem;
-        animation: slideDown 0.3s ease-out;
+        overflow-y: auto;
     }
     
-    @keyframes slideDown {
-        from {
-            opacity: 0;
-            transform: translateY(-20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    .itinerary-controls {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+    .chat-panel-header {
+        color: #b388ff;
+        font-size: 1.1rem;
+        font-weight: bold;
         margin-bottom: 1rem;
-        padding: 1rem;
+        padding: 0.75rem;
         background-color: #1a1d24;
+        border-radius: 8px;
+        border-bottom: 2px solid #2d3139;
+    }
+    
+    /* Streamlit container styling for chat */
+    [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlock"] {
+        background-color: #161b22;
         border-radius: 8px;
     }
     
-    .minimize-button {
-        background-color: #764ba2;
-        color: white;
-        border: none;
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: bold;
-        transition: all 0.3s ease;
+    /* Scrollbar styling for dark theme */
+    .itinerary-main::-webkit-scrollbar,
+    [data-testid="stVerticalBlock"]::-webkit-scrollbar {
+        width: 8px;
     }
     
-    .minimize-button:hover {
-        background-color: #667eea;
+    .itinerary-main::-webkit-scrollbar-track,
+    [data-testid="stVerticalBlock"]::-webkit-scrollbar-track {
+        background: #1a1d24;
+        border-radius: 4px;
+    }
+    
+    .itinerary-main::-webkit-scrollbar-thumb,
+    [data-testid="stVerticalBlock"]::-webkit-scrollbar-thumb {
+        background: #667eea;
+        border-radius: 4px;
+    }
+    
+    .itinerary-main::-webkit-scrollbar-thumb:hover,
+    [data-testid="stVerticalBlock"]::-webkit-scrollbar-thumb:hover {
+        background: #764ba2;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -215,7 +218,6 @@ def initialize_session_state():
         st.session_state.awaiting_input = False
         st.session_state.current_itinerary = ""
         st.session_state.trip_info = {}
-        st.session_state.show_itinerary_fullscreen = False
 
 def display_chat_message(role: str, content: str):
     """Display a chat message with appropriate styling"""
@@ -336,13 +338,12 @@ def process_user_input(user_input: str):
                             show_itinerary = node_state.get("show_itinerary", True)
                             
                             if show_itinerary and node_state.get("final_itinerary"):
-                                # Update itinerary and show in full screen
+                                # Update itinerary
                                 st.session_state.current_itinerary = node_state.get("final_itinerary", "")
-                                st.session_state.show_itinerary_fullscreen = True
                                 # Add a system message to chat indicating itinerary is ready
                                 st.session_state.chat_history.append({
                                     "role": "system",
-                                    "content": "📄 Your itinerary is ready! Review it below and provide feedback."
+                                    "content": "📄 Your itinerary is ready! Review it and provide feedback."
                                 })
                             
                             # Display assistant response if exists (for clarification questions)
@@ -474,82 +475,105 @@ def main():
         Say "save" or "perfect" when satisfied!
         """)
     
-    # Main chat interface
-    st.markdown("### 💬 Chat with Your Travel Assistant")
-    
-    # Chat history
-    chat_container = st.container()
-    with chat_container:
-        for msg in st.session_state.chat_history:
-            display_chat_message(msg["role"], msg["content"])
-    
-    # Input area
-    if not st.session_state.planning_complete:
-        with st.form(key="chat_form", clear_on_submit=True):
-            if not st.session_state.planning_started:
-                user_input = st.text_area(
-                    "✈️ Describe your dream trip:",
-                    placeholder="Example: Plan a 5-day trip to Paris for 2 adults, budget $3000, love food and history",
-                    height=100,
-                    key="user_input_area"
-                )
-                submit_label = "🚀 Start Planning"
-            else:
-                user_input = st.text_input(
-                    "Your message:",
-                    placeholder="Ask questions, request changes, or say 'save' when satisfied",
-                    key="user_input_field"
-                )
-                submit_label = "Send"
-            
-            submit = st.form_submit_button(submit_label)
-            
-            if submit and user_input:
-                process_user_input(user_input)
-                st.rerun()
-    else:
-        st.success("🎉 Trip planning complete! Check the outputs folder for your saved itinerary.")
-        st.info("Click '🔄 Start New Trip' in the sidebar to plan another adventure!")
-    
-    # Full-screen itinerary display
-    if st.session_state.show_itinerary_fullscreen and st.session_state.current_itinerary:
-        st.markdown("---")
-        st.markdown('<div class="fullscreen-itinerary">', unsafe_allow_html=True)
+    # Layout changes based on whether itinerary exists
+    if st.session_state.current_itinerary:
+        # Two-column layout: Itinerary (left/main) + Chat (right/sidebar-like)
+        col_itinerary, col_chat = st.columns([2.5, 1])
         
-        # Controls at the top
-        col_title, col_buttons = st.columns([3, 1])
-        with col_title:
+        # Left column: Itinerary (main focus)
+        with col_itinerary:
             st.markdown("### 📄 Your Itinerary")
-        with col_buttons:
-            if st.button("🔽 Minimize", key="minimize_btn"):
-                st.session_state.show_itinerary_fullscreen = False
-                st.rerun()
+            
+            # Create a container with custom CSS class for styling
+            itinerary_container = st.container()
+            with itinerary_container:
+                st.markdown(f"""
+                <div class="itinerary-main">
+                    <div class="itinerary-box">
+                        {st.session_state.current_itinerary}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Download button
+            destination = st.session_state.trip_info.get("destination", "trip")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"itinerary_{destination}_{timestamp}.md"
+            
+            st.download_button(
+                label="📥 Download Itinerary",
+                data=st.session_state.current_itinerary,
+                file_name=filename,
+                mime="text/markdown",
+                key="download_btn"
+            )
         
-        # Itinerary content
-        st.markdown('<div class="itinerary-box">', unsafe_allow_html=True)
-        st.markdown(st.session_state.current_itinerary)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Download button
-        destination = st.session_state.trip_info.get("destination", "trip")
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"itinerary_{destination}_{timestamp}.md"
-        
-        st.download_button(
-            label="📥 Download Itinerary",
-            data=st.session_state.current_itinerary,
-            file_name=filename,
-            mime="text/markdown",
-            key="download_btn"
-        )
-        
-        st.markdown('</div>', unsafe_allow_html=True)
+        # Right column: Chat panel (compact, like copilot)
+        with col_chat:
+            # Chat header
+            st.markdown('<div class="chat-panel-header">💬 Chat</div>', unsafe_allow_html=True)
+            
+            # Chat messages container
+            chat_container = st.container(height=500)
+            with chat_container:
+                for msg in st.session_state.chat_history:
+                    display_chat_message(msg["role"], msg["content"])
+            
+            # Input area
+            if not st.session_state.planning_complete:
+                with st.form(key="chat_form", clear_on_submit=True):
+                    user_input = st.text_input(
+                        "Your message:",
+                        placeholder="Request changes or say 'save'",
+                        key="user_input_field",
+                        label_visibility="collapsed"
+                    )
+                    submit = st.form_submit_button("Send", use_container_width=True)
+                    
+                    if submit and user_input:
+                        process_user_input(user_input)
+                        st.rerun()
+            else:
+                st.success("🎉 Complete!")
+                st.info("Start a new trip from the sidebar!")
     
-    # Show expand button if itinerary is minimized
-    elif st.session_state.current_itinerary and not st.session_state.show_itinerary_fullscreen:
-        if st.button("📄 View Itinerary", key="expand_btn", type="primary"):
-            st.session_state.show_itinerary_fullscreen = True
-            st.rerun()
+    else:
+        # Initial single-column layout for first interaction
+        st.markdown("### 💬 Chat with Your Travel Assistant")
+        
+        # Chat history
+        chat_container = st.container()
+        with chat_container:
+            for msg in st.session_state.chat_history:
+                display_chat_message(msg["role"], msg["content"])
+        
+        # Input area
+        if not st.session_state.planning_complete:
+            with st.form(key="chat_form", clear_on_submit=True):
+                if not st.session_state.planning_started:
+                    user_input = st.text_area(
+                        "✈️ Describe your dream trip:",
+                        placeholder="Example: Plan a 5-day trip to Paris for 2 adults, budget $3000, love food and history",
+                        height=100,
+                        key="user_input_area"
+                    )
+                    submit_label = "🚀 Start Planning"
+                else:
+                    user_input = st.text_input(
+                        "Your message:",
+                        placeholder="Ask questions, request changes, or say 'save' when satisfied",
+                        key="user_input_field"
+                    )
+                    submit_label = "Send"
+                
+                submit = st.form_submit_button(submit_label)
+                
+                if submit and user_input:
+                    process_user_input(user_input)
+                    st.rerun()
+        else:
+            st.success("🎉 Trip planning complete! Check the outputs folder for your saved itinerary.")
+            st.info("Click '🔄 Start New Trip' in the sidebar to plan another adventure!")
 
 if __name__ == "__main__":
     # Check for OpenAI API key
