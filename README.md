@@ -9,7 +9,7 @@ An interactive, multi-agent travel planning system that creates personalized, en
 - **🔄 Iterative Refinement**: Perfect your itinerary through multiple rounds of feedback
 - **🗣️ Natural Language Understanding**: Describe your trip in plain English
 - **🤖 Multi-Agent Architecture**: Specialized agents for different aspects of trip planning
-- **📊 Real-time Preview**: See your itinerary update in real-time as you chat
+- **📊 Full-Screen Itinerary Display**: Expandable/minimizable full-screen view once your itinerary is ready
 - **🌐 Real-time Data**: Mocked flight, hotel, and activity APIs (ready for real API integration)
 - **📅 Comprehensive Itineraries**: Day-by-day plans with flights, hotels, and activities
 - **💰 Budget Tracking**: Automatic budget breakdown and optimization
@@ -138,7 +138,7 @@ streamlit run streamlit_app.py
 
 This will open a beautiful web interface in your browser at `http://localhost:8501` with:
 - Chat-like conversation interface
-- Real-time itinerary preview
+- Full-screen itinerary display (expandable/minimizable)
 - Trip details sidebar
 - Example queries to get started quickly
 - Download itinerary as Markdown
@@ -170,6 +170,7 @@ Here's what a typical interaction looks like:
 💬 Your feedback: What's the weather like in Paris in July?
 🤔 Analysis: User is asking a basic information question about weather
 💭 Paris in July is typically warm and pleasant, with average temperatures around 20-25°C (68-77°F)...
+(Itinerary remains visible below)
 
 💬 Your response: Thanks! Add more food activities
 
@@ -335,7 +336,7 @@ The project includes a beautiful Streamlit web interface with:
 
 ### Key Features
 - **💬 Chat Interface**: Natural conversation with the AI
-- **📄 Live Preview**: Real-time itinerary updates
+- **📄 Full-Screen Itinerary**: Expandable/minimizable full-screen itinerary display once ready
 - **📊 Trip Dashboard**: Sidebar with current trip details
 - **💡 Example Queries**: Quick-start buttons for common requests
 - **📥 Download**: Export itinerary as Markdown

@@ -39,7 +39,7 @@ streamlit run streamlit_app.py
 
 This will open a web interface at `http://localhost:8501` with:
 - 💬 Chat-like conversation
-- 📄 Real-time itinerary preview
+- 📄 Full-screen itinerary display (expandable/minimizable)
 - 💡 Example queries to get started
 - 📥 Download your itinerary
 - 🔄 Easy reset for new trips

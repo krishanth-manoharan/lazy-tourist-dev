@@ -151,6 +151,51 @@ st.markdown("""
         border: 1px solid #2d3139;
         color: #e0e0e0;
     }
+    
+    /* Full-screen itinerary */
+    .fullscreen-itinerary {
+        background-color: #0e1117;
+        padding: 2rem;
+        border-radius: 12px;
+        margin-top: 1rem;
+        animation: slideDown 0.3s ease-out;
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .itinerary-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background-color: #1a1d24;
+        border-radius: 8px;
+    }
+    
+    .minimize-button {
+        background-color: #764ba2;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    
+    .minimize-button:hover {
+        background-color: #667eea;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -170,6 +215,7 @@ def initialize_session_state():
         st.session_state.awaiting_input = False
         st.session_state.current_itinerary = ""
         st.session_state.trip_info = {}
+        st.session_state.show_itinerary_fullscreen = False
 
 def display_chat_message(role: str, content: str):
     """Display a chat message with appropriate styling"""
@@ -290,12 +336,13 @@ def process_user_input(user_input: str):
                             show_itinerary = node_state.get("show_itinerary", True)
                             
                             if show_itinerary and node_state.get("final_itinerary"):
-                                # Update itinerary in right panel (not in chat!)
+                                # Update itinerary and show in full screen
                                 st.session_state.current_itinerary = node_state.get("final_itinerary", "")
+                                st.session_state.show_itinerary_fullscreen = True
                                 # Add a system message to chat indicating itinerary is ready
                                 st.session_state.chat_history.append({
                                     "role": "system",
-                                    "content": "📄 Your itinerary is ready! Review it in the right panel and provide feedback below."
+                                    "content": "📄 Your itinerary is ready! Review it below and provide feedback."
                                 })
                             
                             # Display assistant response if exists (for clarification questions)
@@ -428,76 +475,81 @@ def main():
         """)
     
     # Main chat interface
-    col1, col2 = st.columns([2, 1])
+    st.markdown("### 💬 Chat with Your Travel Assistant")
     
-    with col1:
-        st.markdown("### 💬 Chat with Your Travel Assistant")
-        
-        # Chat history
-        chat_container = st.container()
-        with chat_container:
-            for msg in st.session_state.chat_history:
-                display_chat_message(msg["role"], msg["content"])
-        
-        # Input area
-        if not st.session_state.planning_complete:
-            with st.form(key="chat_form", clear_on_submit=True):
-                if not st.session_state.planning_started:
-                    user_input = st.text_area(
-                        "✈️ Describe your dream trip:",
-                        placeholder="Example: Plan a 5-day trip to Paris for 2 adults, budget $3000, love food and history",
-                        height=100,
-                        key="user_input_area"
-                    )
-                    submit_label = "🚀 Start Planning"
-                else:
-                    user_input = st.text_input(
-                        "Your message:",
-                        placeholder="Ask questions, request changes, or say 'save' when satisfied",
-                        key="user_input_field"
-                    )
-                    submit_label = "Send"
-                
-                submit = st.form_submit_button(submit_label)
-                
-                if submit and user_input:
-                    process_user_input(user_input)
-                    st.rerun()
-        else:
-            st.success("🎉 Trip planning complete! Check the outputs folder for your saved itinerary.")
-            st.info("Click '🔄 Start New Trip' in the sidebar to plan another adventure!")
+    # Chat history
+    chat_container = st.container()
+    with chat_container:
+        for msg in st.session_state.chat_history:
+            display_chat_message(msg["role"], msg["content"])
     
-    with col2:
-        st.markdown("### 📄 Your Itinerary")
-        
-        if st.session_state.current_itinerary:
-            st.markdown('<div class="itinerary-box">', unsafe_allow_html=True)
-            st.markdown(st.session_state.current_itinerary)
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            # Download button
-            if st.session_state.current_itinerary:
-                destination = st.session_state.trip_info.get("destination", "trip")
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"itinerary_{destination}_{timestamp}.md"
-                
-                st.download_button(
-                    label="📥 Download Itinerary",
-                    data=st.session_state.current_itinerary,
-                    file_name=filename,
-                    mime="text/markdown"
+    # Input area
+    if not st.session_state.planning_complete:
+        with st.form(key="chat_form", clear_on_submit=True):
+            if not st.session_state.planning_started:
+                user_input = st.text_area(
+                    "✈️ Describe your dream trip:",
+                    placeholder="Example: Plan a 5-day trip to Paris for 2 adults, budget $3000, love food and history",
+                    height=100,
+                    key="user_input_area"
                 )
-        else:
-            st.info("Your personalized itinerary will appear here once generated.")
+                submit_label = "🚀 Start Planning"
+            else:
+                user_input = st.text_input(
+                    "Your message:",
+                    placeholder="Ask questions, request changes, or say 'save' when satisfied",
+                    key="user_input_field"
+                )
+                submit_label = "Send"
             
-            st.markdown("""
-            #### What you'll get:
-            - ✈️ Flight options
-            - 🏨 Hotel recommendations  
-            - 🎯 Day-by-day activities
-            - 💰 Budget breakdown
-            - 📍 Destination info
-            """)
+            submit = st.form_submit_button(submit_label)
+            
+            if submit and user_input:
+                process_user_input(user_input)
+                st.rerun()
+    else:
+        st.success("🎉 Trip planning complete! Check the outputs folder for your saved itinerary.")
+        st.info("Click '🔄 Start New Trip' in the sidebar to plan another adventure!")
+    
+    # Full-screen itinerary display
+    if st.session_state.show_itinerary_fullscreen and st.session_state.current_itinerary:
+        st.markdown("---")
+        st.markdown('<div class="fullscreen-itinerary">', unsafe_allow_html=True)
+        
+        # Controls at the top
+        col_title, col_buttons = st.columns([3, 1])
+        with col_title:
+            st.markdown("### 📄 Your Itinerary")
+        with col_buttons:
+            if st.button("🔽 Minimize", key="minimize_btn"):
+                st.session_state.show_itinerary_fullscreen = False
+                st.rerun()
+        
+        # Itinerary content
+        st.markdown('<div class="itinerary-box">', unsafe_allow_html=True)
+        st.markdown(st.session_state.current_itinerary)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Download button
+        destination = st.session_state.trip_info.get("destination", "trip")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"itinerary_{destination}_{timestamp}.md"
+        
+        st.download_button(
+            label="📥 Download Itinerary",
+            data=st.session_state.current_itinerary,
+            file_name=filename,
+            mime="text/markdown",
+            key="download_btn"
+        )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Show expand button if itinerary is minimized
+    elif st.session_state.current_itinerary and not st.session_state.show_itinerary_fullscreen:
+        if st.button("📄 View Itinerary", key="expand_btn", type="primary"):
+            st.session_state.show_itinerary_fullscreen = True
+            st.rerun()
 
 if __name__ == "__main__":
     # Check for OpenAI API key
