@@ -81,6 +81,9 @@ lazy-tourist/
 ├── requirements.txt             # Python dependencies
 ├── README.md                    # This file
 │
+├── docs/                        # Documentation
+│   └── STREAMLIT_LANGGRAPH_INTEGRATION.md  # Streamlit-LangGraph integration guide
+│
 ├── agents/                      # Agent implementations
 │   ├── __init__.py
 │   ├── state.py                 # Shared state schema
@@ -281,43 +284,23 @@ Uses **gpt-4o-mini** for:
 
 ## 🎨 Customization
 
-### Adding New Destinations
-
-Add data to the mock dictionaries in:
-- `tools/flight_tools.py` → `MOCK_FLIGHTS`
-- `tools/hotel_tools.py` → `MOCK_HOTELS`
-- `tools/activity_tools.py` → `MOCK_ACTIVITIES` and destination info
-
-### Integrating Real APIs
-
-Replace the mocked data in tool functions with actual API calls. The tool signatures are designed to match common API patterns.
-
 ### Modifying the Agent Flow
 
 Edit `graph.py` to change the agent orchestration, add new agents, or modify the workflow.
 
 ## 🧪 Testing
 
-Several test files are provided:
+A unified test suite is provided:
 
 ```bash
-# Automated conversation test (recommended)
-python test_automated_conversation.py
+# Run all tests
+python tests/test_agent.py
 
-# Automated test with refinements
-python test_automated_conversation.py refine
-
-# Interactive test (requires manual input)
-python test_conversational.py
-
-# Basic flow test only
-python test_conversational.py basic
-
-# Test missing information prompts
-python test_missing_info.py
-
-# View example queries
-python test_examples.py
+# Run specific test scenarios
+python tests/test_agent.py basic      # Basic flow test
+python tests/test_agent.py refine     # Test with refinements
+python tests/test_agent.py missing    # Test missing information prompts
+python tests/test_agent.py partial    # Test partial information handling
 ```
 
 ## 📝 Output Example
@@ -369,19 +352,14 @@ The project includes a beautiful Streamlit web interface with:
 streamlit run streamlit_app.py
 ```
 
-See [STREAMLIT_GUIDE.md](STREAMLIT_GUIDE.md) for detailed usage instructions.
+### Architecture & Integration
+For a detailed explanation of how Streamlit integrates with LangGraph, including:
+- Module breakdown (components, handlers, session, styles)
+- State management and synchronization
+- Integration flow and checkpointing
+- Best practices
 
-## 🤝 Contributing
-
-This is a demonstration project. To extend it:
-
-1. Add more destinations to the mock data
-2. Integrate real APIs (Amadeus, Skyscanner, etc.)
-3. Add more agent types (car rental, restaurant booking, etc.)
-4. Enhance the feedback loop with more sophisticated preference updates
-5. Add support for multi-city trips
-6. Implement conversation memory across sessions
-7. Enhance the Streamlit UI with more visualization features
+See **[Streamlit-LangGraph Integration Guide](docs/STREAMLIT_LANGGRAPH_INTEGRATION.md)** for comprehensive documentation.
 
 ## 📄 License
 
