@@ -44,8 +44,6 @@ Thumbs.db
 # Project specific
 outputs/*.md
 !outputs/.gitkeep
-*.png
-travel_agent_graph.*
 
 # Jupyter Notebook
 .ipynb_checkpoints
