@@ -2,6 +2,7 @@
 from langchain_core.tools import tool
 from typing import Dict, List
 import json
+from urllib.parse import urlencode
 from mocks.flight_data import MOCK_FLIGHTS, MOCK_RETURN_FLIGHTS  # Note: Mocks kept for reference but not used (APIs are primary source)
 from data.apis import OUTBOUND_FLIGHTS_API, RETURN_FLIGHTS_API
 from utils.api_client import fetch_api_data
@@ -29,7 +30,15 @@ def search_flights(origin: str, destination: str, departure_date: str, passenger
     
     # Fetch from external API
     try:
-        api_response = fetch_api_data(url=OUTBOUND_FLIGHTS_API)
+        # Add query params to URL for demo purposes (responses won't change but shows proper API usage)
+        query_params = urlencode({
+            "origin": origin,
+            "destination": destination,
+            "departure_date": departure_date,
+            "passengers": passengers
+        })
+        api_url = f"{OUTBOUND_FLIGHTS_API}?{query_params}"
+        api_response = fetch_api_data(url=api_url)
         # API returns route-based structure: {"NYC-PARIS": [...], "NYC-BALI": [...], ...}
         flights = None
         
@@ -117,7 +126,15 @@ def search_return_flights(origin: str, destination: str, return_date: str, passe
     
     # Fetch from external API
     try:
-        api_response = fetch_api_data(url=RETURN_FLIGHTS_API)
+        # Add query params to URL for demo purposes (responses won't change but shows proper API usage)
+        query_params = urlencode({
+            "origin": destination,  # Returning from destination
+            "destination": origin,  # Returning to origin
+            "return_date": return_date,
+            "passengers": passengers
+        })
+        api_url = f"{RETURN_FLIGHTS_API}?{query_params}"
+        api_response = fetch_api_data(url=api_url)
         # API returns route-based structure: {"PARIS-NYC": [...], "BALI-NYC": [...], ...}
         flights = None
         

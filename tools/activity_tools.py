@@ -2,6 +2,7 @@
 from langchain_core.tools import tool
 from typing import Dict, List
 import json
+from urllib.parse import urlencode
 from mocks.activity_data import MOCK_ACTIVITIES, MOCK_DESTINATION_INFO  # Note: Mocks kept for reference but not used (APIs are primary source)
 from data.apis import ACTIVITIES_API, DESTINATION_INFO_API
 from utils.api_client import fetch_api_data
@@ -25,7 +26,14 @@ def search_activities(destination: str, interests: str = "", max_price: int = 20
     
     # Fetch from external API
     try:
-        api_response = fetch_api_data(url=ACTIVITIES_API)
+        # Add query params to URL for demo purposes (responses won't change but shows proper API usage)
+        query_params = urlencode({
+            "location": destination,
+            "interests": interests,
+            "max_price": max_price
+        })
+        api_url = f"{ACTIVITIES_API}?{query_params}"
+        api_response = fetch_api_data(url=api_url)
         # API returns destination-based structure: {"PARIS": [...], "BALI": [...], ...}
         activities = None
         
@@ -94,7 +102,12 @@ def get_destination_info(destination: str) -> str:
     
     # Fetch from external API
     try:
-        api_response = fetch_api_data(url=DESTINATION_INFO_API)
+        # Add query params to URL for demo purposes (responses won't change but shows proper API usage)
+        query_params = urlencode({
+            "location": destination
+        })
+        api_url = f"{DESTINATION_INFO_API}?{query_params}"
+        api_response = fetch_api_data(url=api_url)
         # API returns destination-based structure: {"PARIS": {...}, "BALI": {...}, ...}
         info = None
         

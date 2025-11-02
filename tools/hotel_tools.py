@@ -2,6 +2,7 @@
 from langchain_core.tools import tool
 from typing import Dict, List
 import json
+from urllib.parse import urlencode
 from mocks.hotel_data import MOCK_HOTELS  # Note: Mocks kept for reference but not used (API is primary source)
 from data.apis import HOTELS_API
 from utils.api_client import fetch_api_data
@@ -29,7 +30,15 @@ def search_hotels(destination: str, check_in: str, check_out: str, guests: int =
     
     # Fetch from external API
     try:
-        api_response = fetch_api_data(url=HOTELS_API)
+        # Add query params to URL for demo purposes (responses won't change but shows proper API usage)
+        query_params = urlencode({
+            "location": destination,
+            "check_in": check_in,
+            "check_out": check_out,
+            "guests": guests
+        })
+        api_url = f"{HOTELS_API}?{query_params}"
+        api_response = fetch_api_data(url=api_url)
         # API returns destination-based structure: {"PARIS": [...], "BALI": [...], ...}
         hotels = None
         

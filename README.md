@@ -339,15 +339,21 @@ class TravelState(TypedDict):
     # ... more fields
 ```
 
-### Mocked APIs
+### External APIs
 
-Currently, the tools use **mocked data** for:
-- Flight searches (realistic pricing and routes)
-- Hotel availability (ratings, amenities, prices)
-- Activities and attractions
-- Destination information
+The application uses **external mock APIs** for realistic data:
+- **Flight searches** - Outbound and return flights with pricing and routes
+  - Query params: `origin`, `destination`, `departure_date`/`return_date`, `passengers`
+- **Hotel availability** - Hotels with ratings, amenities, and prices
+  - Query params: `location`, `check_in`, `check_out`, `guests`
+- **Activities and attractions** - Tourist activities and points of interest
+  - Query params: `location`, `interests`, `max_price`
+- **Destination information** - Travel tips, visa info, safety guidelines
+  - Query params: `location`
 
-**Ready for Real Integration**: The tool interfaces are designed to easily swap mocked data with real API calls to services like:
+All API calls append relevant query parameters directly to the URL for demo purposes, showing proper API usage patterns. The query parameters are visible in console output (e.g., `https://api.example.com?origin=NYC&destination=Paris&passengers=2`).
+
+**Ready for Real Integration**: The tool interfaces are designed to easily swap mock APIs with real API services like:
 - Amadeus API (flights & hotels)
 - Skyscanner API
 - Google Places API (activities)
