@@ -1,0 +1,10 @@
+# Ignore everything
+*
+
+# But not this file (the .gitignore itself)
+!.gitignore
+
+# Whitelist specific files or folders you want tracked
+!README.md
+!src/
+!src/**
