@@ -5,6 +5,7 @@ from graph import create_travel_agent_graph
 from agents.state import TravelState
 import os
 from datetime import datetime
+import markdown2
 
 # Load environment variables
 load_dotenv()
@@ -343,7 +344,7 @@ def process_user_input(user_input: str):
                                 # Add a system message to chat indicating itinerary is ready
                                 st.session_state.chat_history.append({
                                     "role": "system",
-                                    "content": "📄 Your itinerary is ready! Review it and provide feedback."
+                                    "content": "📜 Your itinerary is ready! Review it and provide feedback."
                                 })
                             
                             # Display assistant response if exists (for clarification questions)
@@ -482,15 +483,17 @@ def main():
         
         # Left column: Itinerary (main focus)
         with col_itinerary:
-            st.markdown("### 📄 Your Itinerary")
+            st.markdown("### ✈️ Your Itinerary")
             
             # Create a container with custom CSS class for styling
             itinerary_container = st.container()
             with itinerary_container:
+                # Convert markdown to HTML for proper rendering
+                itinerary_html = markdown2.markdown(st.session_state.current_itinerary)
                 st.markdown(f"""
                 <div class="itinerary-main">
                     <div class="itinerary-box">
-                        {st.session_state.current_itinerary}
+                        {itinerary_html}
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
