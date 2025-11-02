@@ -15,6 +15,7 @@ from agents.feedback_handler import (
     refine_itinerary_agent,
     save_itinerary_agent
 )
+from utils.image_utils import convert_to_dark_theme
 
 def create_travel_agent_graph():
     """Create the travel planning agent graph with conversational feedback loop"""
@@ -130,19 +131,34 @@ def create_travel_agent_graph():
     checkpointer = MemorySaver()
     return graph.compile(checkpointer=checkpointer)
 
-def visualize_graph(app, output_file="travel_agent_graph.png"):
-    """Generate and save the graph visualization"""
+def visualize_graph(app, output_file="travel_agent_graph.png", dark_mode=False):
+    """Generate and save the graph visualization
+    
+    Args:
+        app: The compiled LangGraph application
+        output_file: Path to save the visualization (default: travel_agent_graph.png)
+        dark_mode: If True, inverts colors for dark theme (default: False)
+    """
     import subprocess
     
     try:
         # Get the graph image
         image_data = app.get_graph().draw_mermaid_png()
         
+        # Apply dark mode if requested
+        if dark_mode:
+            image_data, success = convert_to_dark_theme(image_data, fallback_on_error=True)
+            if success:
+                print(f"\n📊 Graph visualization saved to: {output_file} (dark mode: ON)")
+            else:
+                print("⚠️  PIL/Pillow not installed. Install with: pip install Pillow")
+                print(f"📊 Graph visualization saved to: {output_file} (light mode)")
+        else:
+            print(f"\n📊 Graph visualization saved to: {output_file}")
+        
         # Save to file
         with open(output_file, 'wb') as f:
             f.write(image_data)
-        
-        print(f"\n📊 Graph visualization saved to: {output_file}")
         
         # Try to open it
         subprocess.run(['open', output_file], check=False)

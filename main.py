@@ -59,7 +59,7 @@ Ready to plan your next adventure? 🎒
     """
     print(help_text)
 
-def run_travel_agent(show_graph: bool = False):
+def run_travel_agent(show_graph: bool = False, dark_graph: bool = False):
     """Run the travel agent in interactive mode"""
     
     print_banner()
@@ -86,7 +86,7 @@ def run_travel_agent(show_graph: bool = False):
     
     # Optionally visualize the graph
     if show_graph:
-        visualize_graph(app)
+        visualize_graph(app, dark_mode=dark_graph)
     
     # Initialize state
     initial_state: TravelState = {
@@ -251,6 +251,11 @@ def main():
         help="Show the agent graph visualization"
     )
     parser.add_argument(
+        "--dark-graph",
+        action="store_true",
+        help="Use dark mode for graph visualization (requires Pillow)"
+    )
+    parser.add_argument(
         "--help-guide",
         action="store_true",
         help="Show detailed usage guide"
@@ -264,7 +269,7 @@ def main():
         return
     
     # Run interactive mode
-    run_travel_agent(show_graph=args.show_graph)
+    run_travel_agent(show_graph=args.show_graph, dark_graph=args.dark_graph)
 
 if __name__ == "__main__":
     main()

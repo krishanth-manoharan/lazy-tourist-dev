@@ -18,45 +18,121 @@ An interactive, multi-agent travel planning system that creates personalized, en
 
 ## 🏗️ Architecture
 
-The system uses **LangGraph** to orchestrate multiple specialized agents in an interactive feedback loop with intelligent decision-making:
+The Lazy Tourist system provides two modes of interaction - a **Streamlit Web UI** and a **Command-Line Interface** - both built on the same LangGraph multi-agent architecture.
+
+---
+
+### 🎨 Streamlit Web UI Architecture
 
 ```
-Initial Request
-      ↓
-Extract Intent ←──┐ (if more info needed)
-      ↓          │
-      └──────────┘
-      ↓
-Research Destination → Search Flights
-      ↓
-Search Hotels → Search Activities → Compile Itinerary
-      ↓
-Format Output → GET FEEDBACK
-      ↓
-      │ (shows itinerary by default)
-      ↓
-[LLM analyzes user feedback]
-      │
-      ├─── CLARIFY ──────┐ (basic questions)
-      │                  │ (shows assistant response only)
-      │                  │ (loops back to GET FEEDBACK)
-      │                  │
-      ├─── REFINE ───→ Refine Itinerary
-      │                  │
-      │                  ├── Needs new search → Search Flights → ...
-      │                  │
-      │                  └── Just recompile → Compile Itinerary
-      │                                           │
-      │                                           ↓
-      │                                    Format Output
-      │                                           │
-      │                                           ↓
-      │                                    GET FEEDBACK (shows updated itinerary)
-      │
-      └─── SAVE ───→ Save & Exit
+┌─────────────────────────────────────────────────────────────┐
+│                     streamlit_app.py                        │
+│                   (Main Orchestrator)                       │
+│                                                             │
+│  • Page configuration                                       │
+│  • CSS application                                          │
+│  • Layout coordination                                      │
+│  • Component assembly                                       │
+└────────┬──────────────────┬──────────────────┬──────────────┘
+         │                  │                  │
+         ▼                  ▼                  ▼
+    ┌─────────┐      ┌───────────┐      ┌──────────┐
+    │ ui/     │      │ ui/       │      │ ui/      │
+    │ session │      │ components│      │ styles   │
+    │         │      │           │      │          │
+    │ Session │      │ UI        │      │ CSS      │
+    │ State   │      │ Elements  │      │ Theming  │
+    │ Mgmt    │      │           │      │          │
+    └────┬────┘      └─────┬─────┘      └──────────┘
+         │                 │
+         │                 │ User Interaction
+         │                 ▼
+         │           ┌───────────┐
+         │           │ ui/       │
+         │           │ handlers  │
+         │           │           │
+         │           │ Business  │
+         │           │ Logic     │
+         └───────────┤           │
+                     └─────┬─────┘
+                           │
+                           ▼
+                  ┌─────────────────┐
+                  │   graph.py      │
+                  │                 │
+                  │  LangGraph      │
+                  │  Orchestrator   │
+                  └────────┬────────┘
+                           │
+                           ▼
+                  ┌─────────────────┐
+                  │  Multi-Agent    │
+                  │   Workflow      │
+                  │                 │
+                  │  • Agents       │
+                  │  • Tools        │
+                  │  • State        │
+                  └─────────────────┘
 ```
 
-### Agent Responsibilities
+**Key Components:**
+- **streamlit_app.py**: Main entry point, assembles UI components
+- **ui/session.py**: Manages session state lifecycle
+- **ui/components.py**: Reusable UI elements (chat, header, sidebar)
+- **ui/handlers.py**: Bridges user interactions with LangGraph
+- **ui/styles.py**: Dark theme CSS styling
+- **graph.py**: LangGraph orchestration with checkpointing
+
+---
+
+### 💻 Interactive CLI Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                       main.py                               │
+│                  (CLI Orchestrator)                         │
+│                                                             │
+│  • User input/output                                        │
+│  • Session management                                       │
+│  • State initialization                                     │
+│  • Streaming coordination                                   │
+│  • Graph execution control                                  │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+                          ▼
+                  ┌─────────────────┐
+                  │   graph.py      │
+                  │                 │
+                  │  LangGraph      │
+                  │  Orchestrator   │
+                  └────────┬────────┘
+                           │
+                           ▼
+                  ┌─────────────────┐
+                  │  Multi-Agent    │
+                  │   Workflow      │
+                  │                 │
+                  │  • Agents       │
+                  │  • Tools        │
+                  │  • State        │
+                  └─────────────────┘
+```
+
+**Key Components:**
+- **main.py**: Direct terminal interaction with agent workflow
+- **graph.py**: Same LangGraph orchestration (shared with Streamlit)
+- **Checkpointing**: Uses thread_id for resumable conversations
+- **Streaming**: Real-time updates printed to terminal
+
+---
+
+### 🔄 Agent Workflow (Shared by Both Modes)
+
+![Travel Agent Graph](travel_agent_graph.png)
+
+The graph shows the complete multi-agent workflow with intelligent routing and feedback loops.
+
+### 🤖 Agent Responsibilities
 
 - **Intent Extractor**: Parses natural language, extracts preferences
 - **Destination Research**: Researches visa, weather, safety, tips
@@ -77,7 +153,7 @@ Format Output → GET FEEDBACK
 lazy-tourist/
 ├── streamlit_app.py             # Streamlit Web UI (recommended) - Main entry point
 ├── main.py                      # Command-line interface
-├── graph.py                     # LangGraph orchestration with feedback loop
+├── graph.py                     # LangGraph orchestration with feedback loop & visualization
 ├── requirements.txt             # Python dependencies
 ├── README.md                    # This file
 │
@@ -120,7 +196,8 @@ lazy-tourist/
 ├── utils/                       # Utility functions
 │   ├── __init__.py
 │   ├── api_client.py           # API client utilities
-│   └── pdf_writer.py           # PDF generation utilities
+│   ├── pdf_writer.py           # PDF generation utilities
+│   └── image_utils.py          # Image processing utilities (dark theme conversion)
 │
 ├── outputs/                     # Saved itineraries
 │
@@ -175,6 +252,9 @@ python main.py
 
 # With Graph Visualization
 python main.py --show-graph
+
+# With Graph Visualization (Dark Mode)
+python main.py --show-graph --dark-graph
 
 # Show Help Guide
 python main.py --help-guide
@@ -287,6 +367,33 @@ Uses **gpt-4o-mini** for:
 ### Modifying the Agent Flow
 
 Edit `graph.py` to change the agent orchestration, add new agents, or modify the workflow.
+
+### Graph Visualization
+
+The agent workflow can be visualized as a graph using the `visualize_graph()` function:
+
+```python
+from graph import create_travel_agent_graph, visualize_graph
+
+app = create_travel_agent_graph()
+
+# Light mode (default)
+visualize_graph(app, "travel_agent_graph.png")
+
+# Dark mode (requires Pillow)
+visualize_graph(app, "travel_agent_graph_dark.png", dark_mode=True)
+```
+
+The dark mode option inverts colors to create a dark theme suitable for dark backgrounds. This uses the `convert_to_dark_theme()` utility function from `utils.image_utils`. Requires the `Pillow` library, which is included in `requirements.txt`.
+
+**Command Line:**
+```bash
+# Show graph visualization
+python main.py --show-graph
+
+# Show dark mode graph
+python main.py --show-graph --dark-graph
+```
 
 ## 🧪 Testing
 
