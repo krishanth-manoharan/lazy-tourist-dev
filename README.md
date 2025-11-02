@@ -75,7 +75,7 @@ Format Output → GET FEEDBACK
 
 ```
 lazy-tourist/
-├── streamlit_app.py             # Streamlit Web UI (recommended)
+├── streamlit_app.py             # Streamlit Web UI (recommended) - Main entry point
 ├── main.py                      # Command-line interface
 ├── graph.py                     # LangGraph orchestration with feedback loop
 ├── requirements.txt             # Python dependencies
@@ -89,6 +89,13 @@ lazy-tourist/
 │   ├── itinerary_compiler.py   # Compiles final itinerary
 │   └── feedback_handler.py     # Handles user feedback and refinement
 │
+├── ui/                          # Streamlit UI components (modular structure)
+│   ├── __init__.py
+│   ├── styles.py                # CSS styling for dark theme
+│   ├── session.py               # Session state management
+│   ├── components.py            # Reusable UI components (header, sidebar, chat, etc.)
+│   └── handlers.py              # Event handlers and processing logic
+│
 ├── tools/                       # Tool definitions with mocked APIs
 │   ├── __init__.py
 │   ├── flight_tools.py         # Flight search (mocked)
@@ -96,13 +103,28 @@ lazy-tourist/
 │   ├── activity_tools.py       # Activity & destination research (mocked)
 │   └── itinerary_tools.py      # Itinerary management tools
 │
+├── mocks/                       # Mock data for APIs
+│   ├── __init__.py
+│   ├── flight_data.py          # Flight mock data
+│   ├── hotel_data.py           # Hotel mock data
+│   └── activity_data.py        # Activity mock data
+│
+├── data/                        # External API configurations
+│   ├── __init__.py
+│   ├── apis.py                 # API endpoint definitions
+│   └── README.md               # API integration guide
+│
+├── utils/                       # Utility functions
+│   ├── __init__.py
+│   ├── api_client.py           # API client utilities
+│   └── pdf_writer.py           # PDF generation utilities
+│
 ├── outputs/                     # Saved itineraries
 │
 └── tests/                       # Test files
-    ├── test_conversational.py  # Interactive test
-    ├── test_automated_conversation.py  # Automated test
-    ├── test_missing_info.py    # Test missing info prompts
-    └── test_examples.py        # Example queries
+    ├── __init__.py
+    ├── test_agent.py           # Unified test suite
+    └── README.md               # Testing guide
 ```
 
 ## 🚀 Quick Start
@@ -140,7 +162,7 @@ This will open a beautiful web interface in your browser at `http://localhost:85
 - Chat-like conversation interface
 - Full-screen itinerary display (expandable/minimizable)
 - Trip details sidebar
-- Example queries to get started quickly
+- Example queries to get started quickly (with clipboard copy buttons)
 - Download itinerary as Markdown
 
 **💻 Command Line Interface**:
@@ -338,7 +360,7 @@ The project includes a beautiful Streamlit web interface with:
 - **💬 Chat Interface**: Natural conversation with the AI
 - **📄 Full-Screen Itinerary**: Expandable/minimizable full-screen itinerary display once ready
 - **📊 Trip Dashboard**: Sidebar with current trip details
-- **💡 Example Queries**: Quick-start buttons for common requests
+- **💡 Example Queries**: Quick-start buttons for common requests with clipboard copy functionality
 - **📥 Download**: Export itinerary as Markdown
 - **🔄 Reset**: Start new planning sessions easily
 
